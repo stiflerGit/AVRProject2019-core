@@ -1,0 +1,395 @@
+#ifndef PLAYER_S3D
+#define PLAYER_S3D
+
+#include "Level.s3d"
+#include "Weapon/RocketLauncher.s3d"
+#include "Weapon/Railgun.s3d"
+#include "Bullet.s3d"
+// physics
+#define PLAYER_JUMP_HEIGHT 1.1
+#define PLAYER_JUMP_LENGTH 3
+#define PLAYER_VELOCITY 1.0
+
+#define SWAT_START_WALK 16
+#define SWAT_END_WALK   48
+
+// input events
+#define PLAYER_RUN 1
+#define PLAYER_LEFT 2
+#define PLAYER_RIGHT 4
+#define PLAYER_UP 8
+#define PLAYER_DOWN 16
+#define PLAYER_SHOOT 32
+#define PLAYER_RELOAD 64
+#define PLAYER_JUMP 128
+
+function isEventSet(event, maskEvent) {
+	var res = event & maskevent;
+	if(res == 0){
+		return false;
+	}
+	return true;
+}
+
+class player
+{
+	var level;
+	// graphics
+	var lower_mesh;
+	var upper_mesh;
+	var lower_obj;
+	var upper_obj;
+	var obj;
+	// sound
+	var step_fx;
+	// model
+	var ID;
+	var position;
+	var angle;
+	var direction;
+	var hVel, vVel; /**< horizontal and vertical velocity */
+	var step;
+	var frame_step;
+	var current_frame;
+	var color;
+	//
+	var weapon;
+	var shootedBullets;
+	var nOwnedBullets;
+	var reloadTimeout;
+	var isInTheAir;
+	
+	Init(col);
+	Draw();
+	GetModel();
+	SetModel(model);
+	setPosition(pos);
+	setRotation(angle);
+	getHeadPosition();
+	getHeadDirection();
+	Update(event);
+	
+	reload();
+	isReloading();
+	getNextFrame();
+	getPreviousFrame();
+	getWallObjAtPosition(position);
+	is3DCollidingSegment(oldposition, position);
+	is3DCollidingOnTopSegment(oldposition, position);
+	postProcessPositionAndAirState(oldposition, position);
+};
+
+function Player::Player(ID, level){
+	this.ID = ID;
+	this.level = level;
+	isInTheAir = false;
+	hVel = 0.0;
+	vVel = 0.0;
+	reloadTimeout = 0.0;
+}
+
+function player::GetModel() {
+	return {
+		ID,
+		position,
+		angle,
+		direction,
+		hVel, vVel, 
+		current_frame,
+		weapon,
+		shootedBullets,
+		nOwnedBullets,
+		reloadTimeout,
+		isInTheAir
+	};
+}
+
+function player::SetModel(model) {
+	this.ID = model[0];
+	SetPosition(model[1]);
+	SetRotation(model[2]);
+	this.direction = model[3];
+	this.hVel = model[4];
+	this.vVel = model[5]; 
+	this.current_frame = model[6];
+	this.weapon = model[7];
+	this.shootedBullets = model[8];
+	this.nOwnedBullets = model[9]; 
+	this.reloadTimeout = model[10];
+	this.isInTheAir = model[11];
+}
+
+function player::getHeadPosition()
+{
+	var headPosition = this.position;
+	headPosition[1] = headPosition[1] + 1.5;
+	return (headPosition);
+}
+
+function player::getHeadDirection()
+{
+	return this.direction;
+}
+
+function player::SetPosition(position)
+{
+	this.position = position;
+	obj.setposition(this.position);
+}
+
+function player::SetRotation(angle)
+{
+	this.angle = angle;
+	obj.setrotation(angle*180.0/PI, 0, 1, 0);
+}
+
+
+function player::Init(col)
+{
+	color = col;
+	lower_mesh = CVmNewMesh("swat_lower.aam");
+	var sf1 = lower_mesh.normalize(1);
+	upper_mesh = CVmNewMesh("swat_upper.aam");
+	upper_mesh.scale(sf1);
+	
+	lower_obj = CVmObj(lower_mesh);
+	upper_obj = CVmObj(upper_mesh);
+	
+	obj = CVmObj();
+	obj.addchild(upper_obj);
+	obj.addchild(lower_obj);
+	
+	weapon = Railgun(sf1);
+	obj.addchild(weapon.obj);
+	
+	obj.ModulateMaterials(color);
+	// sound
+	step_fx  = CVmVRAWAV("step.wav");
+	// model init
+	angle = 0;
+	direction = [0,0,1];
+	step = 0.1;
+	frame_step = 1.0;
+	current_frame = SWAT_START_WALK;
+	
+	shootedBullets = Array(0);
+	nOwnedBullets = 9;
+	
+}
+
+function player::Update(event) {
+	static var jumpGravity = 0.0, oldposition = position;
+	var runMultiplicator;
+		 
+	if (!isInTheAir) {
+		if (isEventSet(event, PLAYER_RUN)) {
+			runMultiplicator = 1.5;
+		} else {
+			runMultiplicator = 1.0;
+		}
+		
+		if (isEventSet(event, PLAYER_UP)) {
+			hVel = PLAYER_VELOCITY * runMultiplicator;
+			current_frame = getNextFrame();
+		} else if (isEventSet(event, PLAYER_DOWN)) {
+			hVel = -PLAYER_VELOCITY;
+			current_frame = getPreviousFrame();
+		} else{
+			hVel = 0;
+		}
+		
+		// angle and direction
+		if (isEventSet(event, PLAYER_RIGHT | PLAYER_LEFT)){
+			if (isEventSet(event, PLAYER_RIGHT)) {
+				angle -= 0.02;
+			}
+			if (isEventSet(event, PLAYER_LEFT)) {
+				angle += 0.02;
+			}
+			direction = [sin(angle), 0, cos(angle)];
+		}
+	    
+	    if (isEventSet(event, PLAYER_JUMP)) {
+	    	var vx;
+	    	var h = runMultiplicator * PLAYER_JUMP_HEIGHT;
+	    	var xh = runMultiplicator * PLAYER_JUMP_LENGTH / 2.0;
+	    	if (hVel != 0) {
+	    		vx = abs(hVel);
+	    	} else {
+	    		vx = PLAYER_VELOCITY;
+	    	}
+	    	jumpGravity = 2.0 * h * (vx^2) / (xh^2);
+	    	vVel = 2.0 * h * vx / xh;
+	    	isInTheAir = true;
+	    }
+	}
+	
+	oldposition = position;
+	if (hVel != 0) {
+		position += (hVel*direction*step);	
+	}
+    
+    if (isInTheAir) {
+    	position.y += (vVel*step - 0.5 * jumpGravity * (step^2));
+    	vVel -= (jumpGravity*step);
+    	if (position.y <= 0) {
+    		position.y = 0.0;
+    		vVel = 0.0;
+    		jumpGravity = 0.0;
+    		isInTheAir = false;
+    	}
+    }
+    
+    if (!isReloading() && isEventSet(event, PLAYER_RELOAD)) {
+		this.reload();
+	}
+		
+	if (isEventSet(event, PLAYER_SHOOT)) {
+		var bullet = weapon.Shoot(position, direction);
+		if (bullet != void) {
+			aadd(shootedBullets, bullet);
+		}
+	}
+    
+    var ret = postProcessPositionAndAirState(oldposition, position);
+    position = ret[0]; isInTheAir = ret[1];	
+	
+	setrotation(angle);
+	setposition(position);	
+	
+	if (isReloading()) {
+		reloadTimeout -= 0.01;
+	}
+	
+	weapon.Update();
+	
+	if (len(shootedBullets) > 0) {
+		foreach (var bullet in shootedBullets) {
+			bullet.Update();
+		}
+	}
+	
+}
+
+function Player::Draw()
+{
+	obj.draw(VR_FRAMENUMBER, current_frame);
+	if (len(shootedBullets) > 0) {
+		foreach (var bullet in shootedBullets) {
+			bullet.Draw();
+		}
+	}
+}
+
+function Player::Reload() {
+	if (weapon.nbullets >= weapon.magazineSize){
+		return;
+	}
+	
+	if (nOwnedBullets == 0) {
+		return;
+	}
+
+	var nMissingBullets = weapon.magazineSize - weapon.nBullets;
+	if (nOwnedBullets >= nMissingBullets) {
+		weapon.nBullets += nMissingBullets;
+		nOwnedBullets -= nMissingBullets;
+	} else {
+		weapon.nBullets += nOwnedBullets;
+		nOwnedBullets = 0;
+	}
+	reloadTimeout = weapon.reloadInterval;	
+}
+
+function player::getNextFrame() {
+	var cf = current_frame;
+	cf += frame_step;
+	if (cf > SWAT_END_WALK){
+		step_fx.play();
+		cf = SWAT_START_WALK;
+	}
+	return cf;
+}
+
+function player::getPreviousFrame() {
+	var cf = current_frame;
+	cf -= frame_step;
+	if (cf < SWAT_START_WALK){
+		step_fx.play();
+		cf = SWAT_END_WALK;
+	}
+	return cf;
+}
+
+function player::isReloading() {
+	return reloadTimeout > 0;
+}
+
+function player::getWallObjAtPosition(position) {
+	var i = int(position.z);
+	var j = int(position.x);
+	var wallIdx = level_matrix[i][j];
+	if (wallIdx == -1) {
+		return;
+	}
+	return level.wall_obj_array[wallIdx];
+}
+
+function player::is3DCollidingSegment(oldposition, position) {
+	var wall = getWallObjAtPosition(position);
+	if (wall == void) {
+		return false;
+	}
+	
+	var ContactPoint = vector(3),ContactNormal = vector(3);
+	var isColl = wall.isColliding(oldposition, position, &ContactPoint, &ContactNormal);
+	if (isColl && ContactPoint != oldposition) {
+		return true;
+	}
+	return false;
+}
+
+function player::is3DCollidingOnTopSegment(oldposition, position) {
+	var ContactPoint = vector(3),ContactNormal = vector(3);
+	
+	var wall = getWallObjAtPosition(position);
+	if (wall == void) {
+		return false;
+	}
+
+	var isColl = wall.isColliding(oldposition, position, &ContactPoint, &ContactNormal);
+	
+	if(isColl && ContactPoint != oldposition){
+		var wallH = wall.GetScale().y;
+		if (ContactNormal == [0,1,0] || ContactPoint.y == wallH) {
+			return true;
+		}
+	}
+	return false;	
+}
+
+function player::postProcessPositionAndAirState(oldposition, position) {
+	
+	if (oldposition == position) {
+		return {position, isInTheAir};
+	}
+	
+	if (is3DCollidingSegment(oldposition, position)) {
+		if(is3DCollidingOnTopSegment(oldposition, position)) {
+			var wall = getWallObjAtPosition(position);
+			var wallHeight = wall.GetScale().y;
+			position.y = wallHeight;
+			return {position, false};
+		}
+		position.x = oldposition.x;
+		position.z = oldposition.z;
+	}
+	
+	if (is3DCollidingSegment(position, oldposition)) {
+		return {position, true};
+	}
+	
+	return {position, isInTheAir};
+}
+
+#endif

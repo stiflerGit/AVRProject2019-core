@@ -1,0 +1,75 @@
+#ifndef WEAPON_S3D
+#define WEAPON_S3D
+
+#include "../Bullet.s3d"
+
+class Weapon {
+	// graphic
+	var mesh;
+	var obj;
+	// sound
+	var shoot_fx;
+	// model
+	var name; // name of the weapon
+	var attackInterval; // seconds, time between a shoot and another shoot
+	var damagePoints; // base damage
+	var magazineSize; // maximum number of bullets the weapon can have
+	var nBullets; // no. bullets in the magazine
+	var reloadInterval; //
+	var nextShootTimeout;
+	
+	Init(meshPath, scaleFactor, soundPath);
+	Reload(n);
+	Shoot(position, direction);
+	Update(); // update the model
+	Draw(); // draw
+	
+	hasShoot();
+};
+
+function Weapon::Init(meshPath, scaleFactor, soundPath) {
+	
+	mesh = CVMNewMesh(meshPath);
+	mesh.scale(scaleFactor);
+	obj = CVMObj(mesh);
+	
+	shoot_fx = CVmVRAWAV(soundPath);
+}
+
+function Weapon::Shoot(position, direction){
+	if (!hasShoot() && nBullets > 0) {
+		var b = Bullet();
+		b.Init(position, direction, damagePoints, BULLET_DEFAULT_SPEED);
+		shoot_fx.play();
+		nextShootTimeout = attackInterval;
+		nBullets--;
+		return b;
+	}
+}
+
+function Weapon::Reload(nBul) {
+	var missing = magazineSize - nBullets;
+	if (nBul >= missing) {
+		nBul -= missing;
+		nBullets += missing; 
+	} else {
+		nBullets += Nbul;
+		Nbul = 0;
+	}
+	return Nbul;
+}
+
+function Weapon::Update(){
+	if (hasShoot()) {
+		nextShootTimeout -= 0.01;
+	}
+}
+
+function Weapon::Draw(){
+}
+
+function Weapon::hasShoot() {
+	return nextShootTimeout > 0;
+}
+
+#endif

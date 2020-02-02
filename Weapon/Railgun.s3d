@@ -1,0 +1,22 @@
+#ifndef RAILGUN_S3D 
+#define RAILGUN_S3D
+
+#include "Weapon.s3d"
+
+class Railgun: Weapon {
+};
+
+
+function Railgun::Railgun(scaleFactor) {
+	Init("rocketl.aam", scaleFactor, "shoot.wav");
+	
+	name = "Railgun";
+	nbullets = 50;
+	magazineSize = 50;
+	damagePoints = 1;
+	attackInterval = 0.2;
+	reloadInterval = 1.5;
+		
+}
+
+#endif

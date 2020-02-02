@@ -1,0 +1,44 @@
+#ifndef BULLET_S3D
+#define BULLET_S3D
+
+#define BULLET_DEFAULT_SPEED 0.2
+
+class Bullet {
+	// graphic
+	var mesh;
+	var obj;
+	// model
+	var position;
+	var direction;
+	var speed;
+	var damage;
+	
+	Init(pos, dir, dmg, speed);
+	Update();
+	draw();
+};
+
+function Bullet::Init(pos, dir, dmg, speed) {
+	position  = pos + [0,1,0];
+	direction = dir;
+	damage = dmg;
+	speed = speed;
+	
+	mesh = CVMNewMesh(VRP_BOX);
+	mesh.Scale(0.1);
+	obj = CVmObj(mesh);
+	obj.SetPosition(position);
+}
+
+function Bullet::Update()
+{
+	position += direction*speed;
+	obj.SetPosition(position);
+}
+
+function Bullet::Draw()
+{
+	obj.draw();
+}
+
+#endif
