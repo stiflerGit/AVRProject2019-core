@@ -18,11 +18,11 @@ class Bullet {
 	draw();
 };
 
-function Bullet::Init(pos, dir, dmg, speed) {
+function Bullet::Init(pos, dir, dmg, spd) {
 	position  = pos + [0,1,0];
 	direction = dir;
 	damage = dmg;
-	speed = speed;
+	speed = spd;
 	
 	mesh = CVMNewMesh(VRP_BOX);
 	mesh.Scale(0.1);

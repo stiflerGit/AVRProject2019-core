@@ -34,6 +34,8 @@ function Weapon::Init(meshPath, scaleFactor, soundPath) {
 	obj = CVMObj(mesh);
 	
 	shoot_fx = CVmVRAWAV(soundPath);
+	
+	nextShootTimeout = 0.0;
 }
 
 function Weapon::Shoot(position, direction){
