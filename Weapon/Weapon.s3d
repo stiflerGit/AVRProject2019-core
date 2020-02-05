@@ -44,6 +44,7 @@ function Weapon::Init(pid, meshPath, scaleFactor, soundPath) {
 function Weapon::Shoot(position, direction){
 	if (!hasShoot() && nBullets > 0) {
 		var b = Bullet(this.Pid);
+		position += [0,1,0] + 1.0*direction;
 		b.Init(position, direction, damagePoints, BULLET_DEFAULT_SPEED);
 		shoot_fx.play();
 		nextShootTimeout = attackInterval;
