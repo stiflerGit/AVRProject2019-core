@@ -7,8 +7,8 @@ class Railgun: Weapon {
 };
 
 
-function Railgun::Railgun(scaleFactor) {
-	Init("rocketl.aam", scaleFactor, "shoot.wav");
+function Railgun::Railgun(player, scaleFactor) {
+	Init(player, "rocketl.aam", scaleFactor, "shoot.wav");
 	
 	name = "Railgun";
 	nbullets = 50;

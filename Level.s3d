@@ -16,6 +16,7 @@ class level
 	
 	Init(level_textfile);
 	Draw();
+	GetWallObjAtPosition(position);
 };
 
 
@@ -75,11 +76,21 @@ function level::init(level_textfile)
 }
 
 
-function level::draw()
+function Level::draw()
 {
 	foreach (var t in wall_obj_array)
 		t.Draw();
 	floor_mesh.draw();
+}
+
+function Level::GetWallObjAtPosition(position) {
+	var i = int(position.z);
+	var j = int(position.x);
+	var wallIdx = level_matrix[i][j];
+	if (wallIdx == -1) {
+		return;
+	}
+	return wall_obj_array[wallIdx];
 }
 
 #endif

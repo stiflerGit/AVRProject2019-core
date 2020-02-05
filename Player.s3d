@@ -5,11 +5,16 @@
 #include "Weapon/RocketLauncher.s3d"
 #include "Weapon/Railgun.s3d"
 #include "Bullet.s3d"
+
+// defaults
+#define PLAYER_DEFAULT_HP 100
+
 // physics
 #define PLAYER_JUMP_HEIGHT 1.1
 #define PLAYER_JUMP_LENGTH 3
 #define PLAYER_VELOCITY 1.0
 
+// graphics
 #define SWAT_START_WALK 16
 #define SWAT_END_WALK   48
 
@@ -35,10 +40,8 @@ class player
 {
 	var level;
 	// graphics
-	var lower_mesh;
-	var upper_mesh;
-	var lower_obj;
-	var upper_obj;
+	var lowerObj;
+	var upperObj;
 	var obj;
 	// sound
 	var step_fx;
@@ -58,22 +61,27 @@ class player
 	var nOwnedBullets;
 	var reloadTimeout;
 	var isInTheAir;
+	var hp;
 	
 	Init(col);
 	Draw();
 	GetModel();
 	SetModel(model);
+	SetShootedBulletsModel(model);
+	GetShootedBulletModels();
+	GetShootedBulletDeltaModels(model);
+	GetDeltaModel(model);
 	setPosition(pos);
 	setRotation(angle);
 	getHeadPosition();
 	getHeadDirection();
 	Update(event);
+	RemoveVoidBullets();
 	
 	reload();
 	isReloading();
 	getNextFrame();
 	getPreviousFrame();
-	getWallObjAtPosition(position);
 	is3DCollidingSegment(oldposition, position);
 	is3DCollidingOnTopSegment(oldposition, position);
 	postProcessPositionAndAirState(oldposition, position);
@@ -86,43 +94,216 @@ function Player::Player(ID, level){
 	hVel = 0.0;
 	vVel = 0.0;
 	reloadTimeout = 0.0;
+	hp = PLAYER_DEFAULT_HP;
 }
 
 function player::GetModel() {
+	
+	var bulletModels = GetShootedBulletModels();
+	
 	return {
-		ID,
-		position,
-		angle,
-		direction,
-		hVel, vVel, 
-		current_frame,
-		weapon,
-		shootedBullets,
-		nOwnedBullets,
-		reloadTimeout,
-		isInTheAir
+		{"ID", ID},
+		{"position", position},
+		{"angle", angle},
+		{"direction", direction},
+		{"hVel", hVel},
+		{"vVel", vVel},
+		{"current_frame", current_frame},
+		{"nOwnedBullets", nOwnedBullets},
+		{"reloadTimeout", reloadTimeout},
+		{"isInTheAir", isInTheAir},
+		{"hp", hp},
+		{"shootedBullets", bulletModels}
 	};
 }
 
+/**
+ * Wath do you have to apply to model to a player to be equal to me??
+ */
+function Player::GetDeltaModel(model) {
+	var myModel = this.GetModel();
+	
+	if (model == void || len(model) == 0) {
+		return myModel;
+	}
+	
+	if(len(model) < len(myModel)) {
+		OutputLN("ERROR len(model) < len(myModel)");
+	}
+	
+	var deltaModel = Array(0);
+	for (var i=0; i<len(myModel); i++){
+		var myModelKey = myModel[i][0], myModelVal = myModel[i][1];
+		var modelKey = model[i][0], modelVal = model[i][1];
+		
+		if (myModelkey=="shootedBullets") {
+//			var shootedBulletDeltaModels = GetShootedBulletDeltaModels(modelVal);
+//			if (shootedBulletDeltaModels != void) {
+			if (myModelVal != void) {
+				aadd(deltaModel, {"shootedBullets", myModelVal});
+			}
+					
+//			}
+			continue;
+		}
+		
+		if(modelKey != myModelKey) {
+			Quit("modelKey != myModelKey");
+		}
+		
+		if (myModelVal != modelVal) {
+			aadd(deltaModel, myModel[i]);
+		}
+		
+	}
+	
+	if(len(deltaModel) == 0) {
+		return void;
+	}
+		
+	return deltaModel;
+}
+
 function player::SetModel(model) {
-	this.ID = model[0];
-	SetPosition(model[1]);
-	SetRotation(model[2]);
-	this.direction = model[3];
-	this.hVel = model[4];
-	this.vVel = model[5]; 
-	this.current_frame = model[6];
-	this.weapon = model[7];
-	this.shootedBullets = model[8];
-	this.nOwnedBullets = model[9]; 
-	this.reloadTimeout = model[10];
-	this.isInTheAir = model[11];
+	foreach(var field in model) {
+		var key = field[0], value = field[1];
+		
+		switch(key) {
+		case "ID":
+			this.ID = value;
+			break;
+		case "position":
+			this.position = value;
+			break;
+		case "angle": 
+			this.angle = value;
+			break;
+		case "direction": 
+			this.direction = value;
+			break;
+		case "hVel": 
+			this.hVel = value;
+			break;
+		case "vVel":
+			this.vVel = value;
+			break;
+		case "current_frame":
+			this.current_frame = value;
+			break;
+		case "nOwnedBullets": 
+			this.nOwnedBullets = value;
+			break;
+		case "reloadTimeout":
+			this.reloadTimeout = value;
+			break;
+		case "isInTheAir": 
+			this.isInTheAir = value;
+			break;
+		case "hp":
+			this.hp = value;
+			break;
+		case "shootedBullets":
+			setShootedBulletsModel(value);
+			break;
+		}
+	}
+	
+	setPosition(this.position);
+	setrotation(this.angle);
+}
+
+function player::SetShootedBulletsModel(model) {
+	if(model == void || len(model) == 0) {
+		return;
+	}
+	
+	asize(shootedBullets, len(model));
+	var bulletModels = model;
+	for (var i=0; i < len(bulletModels); i++) {
+		var bulletModel = bulletModels[i];
+		
+		if (bulletModel == void) {
+			shootedBullets[i] = void;
+			continue;
+		}
+		
+		if (len(bulletModel) == 0) {
+			continue;
+		}
+		
+		if (shootedBullets[i] == void) {
+			shootedBullets[i] = Bullet(this.ID);
+			shootedBullets[i].Init([0,0,0], [0,0,0], 0, 0);
+		}
+		shootedBullets[i].SetModel(bulletModel);
+	}
+	
+}
+
+function Player::GetShootedBulletModels() {
+	var bulletModels = Array(0);
+	foreach (var bullet in shootedBullets) {
+		if (bullet != void) {
+			aadd(bulletModels, bullet.GetModel());	
+		} else {
+			aadd(bulletModels, void);
+		}
+	}
+	
+	if (len(bulletModels) == 0) {
+		return void;
+	}
+	
+	return bulletModels;
+}
+
+
+function Player::GetShootedBulletDeltaModels(model) { 
+		
+	if(model == void || len(model) == 0) {
+		return GetShootedBulletModels();
+	}
+	
+	var deltaModels = Array(0);
+	
+	for(var i=0; i<len(shootedBullets); i++) {
+		var shootedBullet = shootedBullets[i];
+		
+		if (shootedBullet == void) {
+			aadd(deltaModels, void);
+			continue;
+		}
+		
+		if (i>len(model) || model[i] == void) {
+			aadd(deltaModels, shootedBullet.GetModel());
+			continue;
+		}
+		
+		var deltaModel = shootedBullet.GetDeltaModel(model[i]);
+		if (deltaModel == void) {
+			deltaModel = {};
+		}
+		
+		aadd(deltaModels, deltaModel);
+	}
+
+}
+
+function player::RemoveVoidBullets() {
+	// remove deleted bullets
+	for(var i=0; i<len(shootedBullets);){
+		if (shootedBullets[i] == void) {
+			adel(shootedBullets, i);
+			continue;
+		}
+		i++;
+	}
 }
 
 function player::getHeadPosition()
 {
 	var headPosition = this.position;
-	headPosition[1] = headPosition[1] + 1.5;
+	headPosition[1] = headPosition.y + 1.5;
 	return (headPosition);
 }
 
@@ -144,22 +325,22 @@ function player::SetRotation(angle)
 }
 
 
-function player::Init(col)
-{
-	color = col;
-	lower_mesh = CVmNewMesh("swat_lower.aam");
-	var sf1 = lower_mesh.normalize(1);
-	upper_mesh = CVmNewMesh("swat_upper.aam");
-	upper_mesh.scale(sf1);
+function player::Init(color) {	
 	
-	lower_obj = CVmObj(lower_mesh);
-	upper_obj = CVmObj(upper_mesh);
+	this.color = color;
+	
+	var lowerMesh =  CVmNewMesh("swat_lower.aam");
+	lowerObj = CVmObj(lowerMesh);
+	var scaling = lowerObj.Normalize(1);
+	var upperMesh = CVmNewMesh("swat_upper.aam");
+	upperObj = CVmObj(upperMesh);
+	upperObj.SetScale(scaling);
 	
 	obj = CVmObj();
-	obj.addchild(upper_obj);
-	obj.addchild(lower_obj);
+	obj.addchild(upperObj);
+	obj.addchild(lowerObj);
 	
-	weapon = Railgun(sf1);
+	weapon = Railgun(this.ID, scaling);
 	obj.addchild(weapon.obj);
 	
 	obj.ModulateMaterials(color);
@@ -224,6 +405,17 @@ function player::Update(event) {
 	    }
 	}
 	
+	if (!isReloading() && isEventSet(event, PLAYER_RELOAD)) {
+		this.reload();
+	}
+		
+	if (isEventSet(event, PLAYER_SHOOT)) {
+		var bullet = weapon.Shoot(position, direction);
+		if (bullet != void) {
+			aadd(shootedBullets, bullet);
+		}
+	}
+	
 	oldposition = position;
 	if (hVel != 0) {
 		position += (hVel*direction*step);	
@@ -240,17 +432,6 @@ function player::Update(event) {
     	}
     }
     
-    if (!isReloading() && isEventSet(event, PLAYER_RELOAD)) {
-		this.reload();
-	}
-		
-	if (isEventSet(event, PLAYER_SHOOT)) {
-		var bullet = weapon.Shoot(position, direction);
-		if (bullet != void) {
-			aadd(shootedBullets, bullet);
-		}
-	}
-    
     var ret = postProcessPositionAndAirState(oldposition, position);
     position = ret[0]; isInTheAir = ret[1];	
 	
@@ -263,8 +444,9 @@ function player::Update(event) {
 	
 	weapon.Update();
 	
-	if (len(shootedBullets) > 0) {
-		foreach (var bullet in shootedBullets) {
+	
+	foreach (var bullet in shootedBullets) {
+		if (bullet!= void) {
 			bullet.Update();
 		}
 	}
@@ -274,8 +456,10 @@ function player::Update(event) {
 function Player::Draw()
 {
 	obj.draw(VR_FRAMENUMBER, current_frame);
-	if (len(shootedBullets) > 0) {
-		foreach (var bullet in shootedBullets) {
+	lowerObj.DrawBoundingBox();
+	upperObj.DrawBoundingBox();
+	foreach (var bullet in shootedBullets) {
+		if (bullet != void) {
 			bullet.Draw();
 		}
 	}
@@ -325,18 +509,8 @@ function player::isReloading() {
 	return reloadTimeout > 0;
 }
 
-function player::getWallObjAtPosition(position) {
-	var i = int(position.z);
-	var j = int(position.x);
-	var wallIdx = level_matrix[i][j];
-	if (wallIdx == -1) {
-		return;
-	}
-	return level.wall_obj_array[wallIdx];
-}
-
 function player::is3DCollidingSegment(oldposition, position) {
-	var wall = getWallObjAtPosition(position);
+	var wall = level.getWallObjAtPosition(position);
 	if (wall == void) {
 		return false;
 	}
@@ -352,7 +526,7 @@ function player::is3DCollidingSegment(oldposition, position) {
 function player::is3DCollidingOnTopSegment(oldposition, position) {
 	var ContactPoint = vector(3),ContactNormal = vector(3);
 	
-	var wall = getWallObjAtPosition(position);
+	var wall = level.getWallObjAtPosition(position);
 	if (wall == void) {
 		return false;
 	}
@@ -376,7 +550,7 @@ function player::postProcessPositionAndAirState(oldposition, position) {
 	
 	if (is3DCollidingSegment(oldposition, position)) {
 		if(is3DCollidingOnTopSegment(oldposition, position)) {
-			var wall = getWallObjAtPosition(position);
+			var wall = level.getWallObjAtPosition(position);
 			var wallHeight = wall.GetScale().y;
 			position.y = wallHeight;
 			return {position, false};

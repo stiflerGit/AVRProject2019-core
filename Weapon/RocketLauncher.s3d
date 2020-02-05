@@ -7,8 +7,8 @@ class RocketLauncher: Weapon {
 	
 };
 
-function RocketLauncher::RocketLauncher(scaleFactor) {
-	Init("rocketl.aam", scaleFactor, "shoot.wav");
+function RocketLauncher::RocketLauncher(player, scaleFactor) {
+	Init(player, "rocketl.aam", scaleFactor, "shoot.wav");
 	
 	name = "Rocket Launcher";
 	nbullets = 3;
