@@ -1,29 +1,40 @@
-#ifndef BULLET_S3D
-#define BULLET_S3D
+#ifndef BULLET_MODEL_S3D
+#define BULLET_MODEL_S3D
 
 #define BULLET_DEFAULT_SPEED 0.2
 
-class Bullet {
+class BulletModel {
 	// playerID
 	var Pid;
-	// graphic
-	var mesh;
-	var obj;
 	// model
 	var position;
 	var direction;
 	var speed;
 	var damage;
 	
-	Init(pos, dir, dmg, speed);
+	Marshall();
+	MarshallDelta(model);
+	Unmarshall(model);
 	Update();
-	Draw();
-	GetModel();
-	GetDeltaModel(model);
-	SetModel(model);
 };
 
-function Bullet::GetModel() {
+function BulletModel::BulletModel(pid, position, direction, speed, damage) {
+	
+	this.pid = pid;
+	
+	this.position = position;
+	
+	this.direction = direction;
+	
+	if (speed == void){
+		speed = BULLET_DEFAULT_SPEED; 
+	}
+	this.speed = speed;
+	
+	this.damage = damage;
+}
+
+function BulletModel::Marshall() {
 	return {
 		{ "Pid", Pid},
 		{ "position", position},
@@ -33,8 +44,8 @@ function Bullet::GetModel() {
 	};
 }
 
-function Bullet::GetDeltaModel(model) {
-	var myModel = this.GetModel();
+function BulletModel::MarshallDelta(model) {
+	var myModel = this.Marshall();
 	
 	if (len(model) == 0) {
 		return myModel;
@@ -69,7 +80,7 @@ function Bullet::GetDeltaModel(model) {
 	return deltaModel;
 }
 
-function Bullet::SetModel(model){
+function BulletModel::Unmarshall(model){
 	
 	if (len(model) == 0) {
 		return;
@@ -96,36 +107,11 @@ function Bullet::SetModel(model){
 			break;
 		}
 	}
-	
-	obj.SetPosition(position);
 }
 
-function Bullet::Bullet(pid) {
-	this.Pid = pid;
-}
-
-function Bullet::Init(pos, dir, dmg, spd) {
-	position  = pos;
-	direction = dir;
-	damage = dmg;
-	speed = spd;
-	
-	var mesh = CVMNewMesh(VRP_BOX);
-	obj = CVmObj(mesh);
-	obj.SetScale(0.1);
-	obj.SetPosition(position);
-}
-
-function Bullet::Update()
+function BulletModel::Update()
 {
 	position += direction*speed;
-	obj.SetPosition(position);
-}
-
-function Bullet::Draw()
-{
-	obj.draw();
-	obj.DrawBoundingBox();
 }
 
 #endif

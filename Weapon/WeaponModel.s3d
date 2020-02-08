@@ -1,0 +1,81 @@
+#ifndef WEAPON_MODEL_S3D
+#define WEAPON_MODEL_S3D
+
+#include "../Bullet/BulletModel.s3d"
+
+class WeaponModel {
+	// playerID
+	var Pid;
+	// model
+	var name; // name of the weapon
+	var attackInterval; // seconds, time between a shoot and another shoot
+	var damagePoints; // base damage
+	var magazineSize; // maximum number of bullets the weapon can have
+	var nBullets; // no. bullets in the magazine
+	var reloadInterval; //
+	var nextShootTimeout;
+	
+	Reload(n);
+	Shoot(position, direction);
+	Update();
+	
+	hasShoot();
+};
+
+function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval) {
+	this.pid = pid;
+	this.attackInterval = attackInterval;
+	this.damagePoints = damagePoints;
+	this.magazineSize = magazineSize;
+	this.nBullets = magazineSize;
+	this.reloadInterval = reloadInterval;
+	this.nextShootTimeout = 0.0;
+}
+
+function WeaponModel::Shoot(position, direction){
+	if (!hasShoot() && nBullets > 0) {
+		position += [0,1,0] + 1.0*direction;
+		var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints);
+		nextShootTimeout = attackInterval;
+		nBullets--;
+		return b;
+	}
+}
+
+function WeaponModel::Reload(nBul) {
+	var missing = magazineSize - nBullets;
+	if (nBul >= missing) {
+		nBul -= missing;
+		nBullets += missing; 
+	} else {
+		nBullets += Nbul;
+		Nbul = 0;
+	}
+	return Nbul;
+}
+
+function WeaponModel::Update(){
+	if (hasShoot()) {
+		nextShootTimeout -= 0.01;
+	}
+}
+
+function WeaponModel::hasShoot() {
+	return nextShootTimeout > 0;
+}
+
+function NewRocketLauncherModel(pid) {
+	
+	var w = WeaponModel(pid, 1.0, 5, 3, 3.0);
+	
+	return w;
+}
+
+function NewRailGunModel(pid) {
+	
+	var w = WeaponModel(pid, 0.2, 1, 50, 1.5);
+	
+	return w;
+}
+
+#endif
