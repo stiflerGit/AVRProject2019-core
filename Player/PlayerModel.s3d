@@ -66,9 +66,9 @@ class PlayerModel {
 	
 	reload();
 	isReloading();
-	is3DCollidingSegment(oldposition, position);
-	is3DCollidingOnTopSegment(oldposition, position);
-	postProcessPositionAndAirState(oldposition, position);
+	isPathCollidingWithWall(oldposition, position);
+	isPathCollidingWithWallOnTop(oldposition, position);
+	postProcessPositionAndAirState(oldposition);
 };
 
 function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp, weapon){
@@ -312,7 +312,7 @@ function PlayerModel::RemoveVoidBullets() {
 
 function PlayerModel::GetHeadPosition()
 {
-	var headPosition = this.position + (0.5) * this.direction;
+	var headPosition = this.position + (0.3) * this.direction;
 	headPosition.y = headPosition.y + 1.5;
 	return (headPosition);
 }
@@ -390,15 +390,13 @@ function PlayerModel::Update(event) {
     	}
     }
     
-    var ret = postProcessPositionAndAirState(oldposition, position);
-    position = ret[0]; isInTheAir = ret[1];	
+    var ret = postProcessPositionAndAirState(oldposition);
 	
 	if (isReloading()) {
 		reloadTimeout -= 0.01;
 	}
 	
 	weapon.Update();
-	
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet!= void) {
@@ -433,7 +431,7 @@ function PlayerModel::isReloading() {
 	return reloadTimeout > 0;
 }
 
-function PlayerModel::is3DCollidingSegment(oldposition, position) {
+function PlayerModel::isPathCollidingWithWall(oldposition, position) {
 	var wall = level.getWallObjAtPosition(position);
 	if (wall == void) {
 		return false;
@@ -447,7 +445,7 @@ function PlayerModel::is3DCollidingSegment(oldposition, position) {
 	return false;
 }
 
-function PlayerModel::is3DCollidingOnTopSegment(oldposition, position) {
+function PlayerModel::isPathCollidingWithWallOnTop(oldposition, position) {
 	var ContactPoint = vector(3),ContactNormal = vector(3);
 	
 	var wall = level.getWallObjAtPosition(position);
@@ -466,28 +464,41 @@ function PlayerModel::is3DCollidingOnTopSegment(oldposition, position) {
 	return false;
 }
 
-function PlayerModel::postProcessPositionAndAirState(oldposition, position) {
+function PlayerModel::postProcessPositionAndAirState(oldposition) {
 	
 	if (oldposition == position) {
-		return {position, isInTheAir};
+		return;
 	}
 	
-	if (is3DCollidingSegment(oldposition, position)) {
-		if(is3DCollidingOnTopSegment(oldposition, position)) {
-			var wall = level.getWallObjAtPosition(position);
-			var wallHeight = wall.GetScale().y;
-			position.y = wallHeight;
-			return {position, false};
-		}
-		position.x = oldposition.x;
-		position.z = oldposition.z;
+	// dir is different from direction cause consider also deltaY
+	var dir = Norm(position - oldposition);
+	var NextPos = position + 0.7* dir;
+	var rside = Norm(direction ^ [0,1,0]);
+	var lside = Norm([0,1,0] ^ direction);
+	var NextRpos = NextPos + 0.7*rside;
+	var NextLpos = NextPos + 0.7*lside;
+	
+	var positions = {NextPos, NextRpos, NextLpos};
+	
+	foreach (var pos in positions) {
+		if (isPathCollidingWithWall(oldposition, pos)) {
+				
+			if(isPathCollidingWithWallOnTop(oldposition, pos)) {
+				var wall = level.getWallObjAtPosition(pos);
+				var wallHeight = wall.GetScale().y;
+				position.y = wallHeight;
+				isInTheAir = false;
+				return;
+			}
+			position.x = oldposition.x;
+			position.z = oldposition.z;
+		}	
 	}
 	
-	if (is3DCollidingSegment(position, oldposition)) {
-		return {position, true};
+	if (isPathCollidingWithWall(position, oldposition)) {
+		isInTheAir = true;
+		return;
 	}
-	
-	return {position, isInTheAir};
 }
 
 #endif
