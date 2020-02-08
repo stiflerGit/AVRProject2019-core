@@ -10,7 +10,6 @@
 #define SWAT_END_WALK   48
 
 class PlayerGFX : PlayerModel {
-	var level;
 	// graphics
 	var lowerObj;
 	var upperObj;
@@ -19,7 +18,9 @@ class PlayerGFX : PlayerModel {
 	var frameStep;
 	var color;
 	// sound
-	var step_fx;
+	var stepFx;
+	var jumpFx;
+	var playStep, playJump;
 	
 	Unmarshall(data);
 	Init(col);
@@ -28,18 +29,28 @@ class PlayerGFX : PlayerModel {
 	SetRotation(angle);
 	Update(event);
 	
-	updateCurrentFrameToNextFrame();
-	updateCurrentFrameToPrevFrame();
+	updateGFX(event);
+	addToCurrentFrameToNextFrame(fStep);
 };
 
 function PlayerGFX::Unmarshall(data) {
+	var wasInTheAir = isInTheAir;
 	
 	PlayerModel::this.Unmarshall(data);
 	
-	if (hVel > 0) {
-		updateCurrentFrameToNextFrame();
-	} else if(hVel < 0) {
-		updateCurrentFrameToPrevFrame();
+	
+	if (hVel != 0){
+		var fStep = 1;			
+		if (hVel > PLAYER_VELOCITY) {
+			fStep = 2;
+		} else if(hVel < 0) {
+			fStep = -1;
+		}
+		addToCurrentFrameToNextFrame(fStep);
+	}
+	
+	if (!wasInTheAir && vVel > 0) {
+		playJump = true;
 	}
 }
 
@@ -77,7 +88,8 @@ function PlayerGFX::Init(color) {
 	
 	obj.ModulateMaterials(color);
 	// sound
-	step_fx  = CVmVRAWAV("step.wav");
+	stepFx = CVmVRAWAV("step.wav");
+	jumpFx = CVmVRAWAV("jump.wav");
 	// init
 	frameStep = 1.0;
 	currentFrame = SWAT_START_WALK;
@@ -85,26 +97,32 @@ function PlayerGFX::Init(color) {
 	SetRotation(this.angle);
 	SetPosition(this.position);
 	
+	playStep = false;
+	playJump = false;	
 }
 
 function PlayerGFX::Update(event) {
+	updateGFX(event);
 	PlayerModel::this.Update(event);
-	
-	static var jumpGravity = 0.0, oldposition = position;
-	var runMultiplicator;
+}
+
+function PlayerGFX::updateGFX(event) {
 	if (!isInTheAir) {
+		var fStep = 1;
 		if (isEventSet(event, PLAYER_RUN)) {
-			runMultiplicator = 1.5;
-		} else {
-			runMultiplicator = 1.0;
+			fStep = 2;
 		}
 		
 		if (isEventSet(event, PLAYER_UP)) {
-			UpdateCurrentFrameToNextFrame();
+			AddToCurrentFrameToNextFrame(fStep);
 		} else if (isEventSet(event, PLAYER_DOWN)) {
-			UpdateCurrentFrameToPrevFrame();
+			AddToCurrentFrameToNextFrame(-fStep);
 		}
-	}	
+		
+		if (isEventSet(event, PLAYER_JUMP)) {
+			playJump = true;
+		}
+	}
 }
 
 function PlayerGFX::Draw()
@@ -119,21 +137,23 @@ function PlayerGFX::Draw()
 			b.Draw();
 		}
 	}
-}
-
-function PlayerGFX::updateCurrentFrameToNextFrame() {
-	currentFrame += frameStep;
-	if (currentFrame > SWAT_END_WALK){
-		step_fx.play();
-		currentFrame = SWAT_START_WALK;
+	if (playStep) {
+		stepFx.Play();
+		playStep = false;
+	}
+	if (playJump) {
+		jumpFx.Play();
+		playJump = false;
 	}
 }
 
-function PlayerGFX::updateCurrentFrameToPrevFrame() {
-	currentFrame;
-	currentFrame -= frameStep;
-	if (currentFrame < SWAT_START_WALK){
-		step_fx.play();
+function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
+	currentFrame += fStep;
+	if (currentFrame > SWAT_END_WALK){
+		playStep = true;
+		currentFrame = SWAT_START_WALK;
+	} else if(currentFrame < SWAT_START_WALK){
+		playStep = true;
 		currentFrame = SWAT_END_WALK;
 	}
 }
