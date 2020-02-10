@@ -102,7 +102,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	this.hp = hp;
 	
 	if (this.weapon == void) {
-		weapon = NewRocketLauncherModel(this.ID);
+		weapon = NewRailgunModel(this.ID);
 	}
 	this.weapon = weapon;
 	

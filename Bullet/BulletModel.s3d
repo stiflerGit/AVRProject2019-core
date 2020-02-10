@@ -18,6 +18,7 @@ class BulletModel {
 	Unmarshall(model);
 	Update();
 	IsCollidingWithPoint(point);
+	IsCollidingWithSphere(center, radius);
 };
 
 function BulletModel::BulletModel(pid, position, direction, speed, damage, radiusOfInfluence) {
@@ -125,6 +126,16 @@ function BulletModel::IsCollidingWithPoint(point) {
 		return true;
 	}
 	return false;
+}
+
+function BulletModel::IsCollidingWithSphere(center, radius) {
+	var delta = center - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence + radius) {
+		return true;
+	}
+	return false; 
 }
 
 #endif
