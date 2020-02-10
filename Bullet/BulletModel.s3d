@@ -11,14 +11,16 @@ class BulletModel {
 	var direction;
 	var speed;
 	var damage;
+	var radiusOfInfluence;
 	
 	Marshall();
 	MarshallDelta(model);
 	Unmarshall(model);
 	Update();
+	IsCollidingWithPoint(point);
 };
 
-function BulletModel::BulletModel(pid, position, direction, speed, damage) {
+function BulletModel::BulletModel(pid, position, direction, speed, damage, radiusOfInfluence) {
 	
 	this.pid = pid;
 	
@@ -32,6 +34,8 @@ function BulletModel::BulletModel(pid, position, direction, speed, damage) {
 	this.speed = speed;
 	
 	this.damage = damage;
+	
+	this.radiusOfInfluence = radiusOfInfluence;
 }
 
 function BulletModel::Marshall() {
@@ -109,9 +113,18 @@ function BulletModel::Unmarshall(model){
 	}
 }
 
-function BulletModel::Update()
-{
+function BulletModel::Update() {
 	position += direction*speed;
+}
+
+function BulletModel::IsCollidingWithPoint(point) {
+	var delta = point - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence) {
+		return true;
+	}
+	return false;
 }
 
 #endif

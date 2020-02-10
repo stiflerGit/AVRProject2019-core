@@ -13,7 +13,7 @@ class BulletGFX: BulletModel {
 function BulletGFX::Init() {
 	var mesh = CVMNewMesh(VRP_SPHERE);
 	obj = CVmObj(mesh);
-	obj.SetScale(0.1);
+	obj.SetScale(this.radiusOfInfluence);
 	obj.SetPosition(position);
 }
 

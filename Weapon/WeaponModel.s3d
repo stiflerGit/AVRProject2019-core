@@ -14,6 +14,7 @@ class WeaponModel {
 	var nBullets; // no. bullets in the magazine
 	var reloadInterval; //
 	var nextShootTimeout;
+	var radiusOfInfluence;
 	
 	Reload(n);
 	Shoot(position, direction);
@@ -22,7 +23,7 @@ class WeaponModel {
 	hasShoot();
 };
 
-function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval) {
+function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence) {
 	this.pid = pid;
 	this.attackInterval = attackInterval;
 	this.damagePoints = damagePoints;
@@ -30,12 +31,13 @@ function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSiz
 	this.nBullets = magazineSize;
 	this.reloadInterval = reloadInterval;
 	this.nextShootTimeout = 0.0;
+	this.radiusOfInfluence = radiusOfInfluence;
 }
 
 function WeaponModel::Shoot(position, direction){
 	if (!hasShoot() && nBullets > 0) {
 		position += [0,1,0] + 1.0*direction;
-		var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints);
+		var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
 		nextShootTimeout = attackInterval;
 		nBullets--;
 		return b;
@@ -66,14 +68,16 @@ function WeaponModel::hasShoot() {
 
 function NewRocketLauncherModel(pid) {
 	
-	var w = WeaponModel(pid, 1.0, 5, 3, 3.0);
+	var w = WeaponModel(pid, 1.0, 5, 3, 3.0, 0.3);
+	w.name = "rocketLauncher";
 	
 	return w;
 }
 
 function NewRailGunModel(pid) {
 	
-	var w = WeaponModel(pid, 0.2, 1, 50, 1.5);
+	var w = WeaponModel(pid, 0.2, 1, 50, 1.5, 0.05);
+	w.name = "railgun";
 	
 	return w;
 }

@@ -102,7 +102,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	this.hp = hp;
 	
 	if (this.weapon == void) {
-		weapon = NewRailGunModel(this.ID);
+		weapon = NewRocketLauncherModel(this.ID);
 	}
 	this.weapon = weapon;
 	
@@ -416,14 +416,7 @@ function PlayerModel::Reload() {
 		return;
 	}
 
-	var nMissingBullets = weapon.magazineSize - weapon.nBullets;
-	if (nOwnedBullets >= nMissingBullets) {
-		weapon.nBullets += nMissingBullets;
-		nOwnedBullets -= nMissingBullets;
-	} else {
-		weapon.nBullets += nOwnedBullets;
-		nOwnedBullets = 0;
-	}
+	nOwnedBullets = weapon.Reload(nOwnedBullets);
 	reloadTimeout = weapon.reloadInterval;	
 }
 
