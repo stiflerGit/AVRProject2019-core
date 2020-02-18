@@ -2,6 +2,7 @@
 #define PLAYER_MODEL_S3D
 
 #include "../Level.s3d"
+#include "../utils.s3d"
 #include "../Weapon/WeaponModel.s3d"
 #include "../Bullet/BulletModel.s3d"
 
@@ -45,6 +46,7 @@ class PlayerModel {
 	var angle;
 	var direction;
 	var hVel, vVel; /**< horizontal and vertical velocity */
+	var gravity;
 	var step;
 	//
 	var weapon;
@@ -65,11 +67,11 @@ class PlayerModel {
 	GetHeadPosition();
 	Update(event);
 	RemoveVoidBullets();
+	IsCollidingWithBullet(bullet);
 	
 	reload();
 	isReloading();
 	isPathCollidingWithWall(oldposition, position);
-	isPathCollidingWithWallOnTop(oldposition, position);
 	postProcessPosition(oldposition, newposition, i);
 	postProcessPositionXZ(oldposition, newposition, i);
 	postProcessPositionY(oldposition, newposition, i);
@@ -114,6 +116,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	isInTheAir = false;
 	hVel = 0.0;
 	vVel = 0.0;
+	gravity = 0.0;
 	reloadTimeout = 0.0;
 	
 	shootedBullets = Array(0);
@@ -324,22 +327,18 @@ function PlayerModel::GetHeadPosition()
 
 
 function PlayerModel::Update(event) {
-	static var jumpGravity = 0.0, oldposition = position;
-	var runMultiplicator;
 		 
 	if (!isInTheAir) {
+		var runMultiplicator = 1.0;
 		if (isEventSet(event, PLAYER_RUN)) {
 			runMultiplicator = 1.5;
-		} else {
-			runMultiplicator = 1.0;
 		}
 		
+		hVel = 0;
 		if (isEventSet(event, PLAYER_UP)) {
 			hVel = PLAYER_VELOCITY * runMultiplicator;
 		} else if (isEventSet(event, PLAYER_DOWN)) {
 			hVel = -PLAYER_VELOCITY;
-		} else{
-			hVel = 0;
 		}
 		
 		// angle and direction
@@ -360,7 +359,7 @@ function PlayerModel::Update(event) {
 	    	if (hVel != 0) {
 	    		vx = abs(hVel);
 	    	}
-	    	jumpGravity = 2.0 * h * (vx^2) / (xh^2);
+	    	gravity = 2.0 * h * (vx^2) / (xh^2);
 	    	vVel = 2.0 * h * vx / xh;
 	    }
 	}
@@ -378,23 +377,23 @@ function PlayerModel::Update(event) {
 		}
 	}
 	
-	oldposition = position;
+	var oldposition = position;
 	
 	if (hVel != 0) {
 		position += (hVel*direction*step);	
 	}
     
-    if (vVel != 0 || jumpGravity != 0) {
-    	position.y += (vVel*step - 0.5 * jumpGravity * (step^2));
-    	vVel -= (jumpGravity*step);
+    if (vVel != 0 || gravity != 0) {
+    	position.y += (vVel*step - 0.5 * gravity * (step^2));
+    	vVel -= (gravity*step);
     }
     
     this.position = postProcessPosition(oldposition, position, PLAYER_DEFAULT_PPPOSITION_ACCURACY);
     this.isInTheAir = postProcessIsInTheAir();
     if (!isInTheAir) {
-    	vVel = 0; jumpGravity = 0;
-    } else if(jumpGravity == 0) {
-    	jumpGravity = 2.0 * PLAYER_JUMP_HEIGHT * (PLAYER_VELOCITY^2) / ((PLAYER_JUMP_LENGTH / 2.0)^2);
+    	vVel = 0; gravity = 0;
+    } else if(gravity == 0) {
+    	gravity = 2.0 * PLAYER_JUMP_HEIGHT * (PLAYER_VELOCITY^2) / ((PLAYER_JUMP_LENGTH / 2.0)^2);
     }
 	
 	weapon.Update();
@@ -444,12 +443,8 @@ function PlayerModel::isPathCollidingWithWall(oldposition, position) {
 }
 
 function PlayerModel::postProcessPosition(oldposition, newposition, accuracy) {
-	var pos;
-	pos = PostProcessPositionY(oldposition, newposition, accuracy);
-	newposition.y = pos.y;
-	pos = PostProcessPositionXZ(oldposition, newposition, accuracy);
-	newposition.x = pos.x;
-	newposition.z = pos.z;
+	newposition._y_ = PostProcessPositionY(oldposition, newposition, accuracy);
+	newposition.x_z = PostProcessPositionXZ(oldposition, newposition, accuracy);
 	return newposition;
 }
 
@@ -462,11 +457,11 @@ function PlayerModel::postProcessPositionXZ(oldposition, newposition, accuracy) 
 	
 	// dir is different from direction cause consider also deltaY
 	var dir = Norm(newposition - oldposition);
-	var NextPos = newposition + 0.7* dir;
+	var NextPos = newposition + 0.5* dir;
 	var rside = Norm(direction ^ [0,1,0]);
 	var lside = Norm([0,1,0] ^ direction);
-	var NextRpos = NextPos + 0.7*rside;
-	var NextLpos = NextPos + 0.7*lside;
+	var NextRpos = NextPos + 0.5*rside;
+	var NextLpos = NextPos + 0.5*lside;
 	
 	var positions = {NextPos, NextLpos, NextRpos};
 	
@@ -477,8 +472,7 @@ function PlayerModel::postProcessPositionXZ(oldposition, newposition, accuracy) 
 		if (isColl && !isOnTop) {
 			var sen2 = (Modulus(cn ^ dir)) ^ 2;
 			var wallApproachDir = Norm(((cn ^ dir) ^ cn) + 0.05 * cn);
-			newposition.x = oldposition.x + sen2/5 * wallApproachDir.x;
-			newposition.z = oldposition.z + sen2/5 * wallApproachDir.z;
+			newposition.x_z = oldposition + sen2/20 * wallApproachDir;
 			newposition = postProcessPositionXZ(oldposition, newposition, --accuracy);
 			break;
 		}
@@ -523,7 +517,26 @@ function PlayerModel::postProcessIsInTheAir() {
 	}
 	
 	return false;
-	
 }
+
+function PlayerModel::isCollidingWithBullet(bullet) {
+	var x0 = bullet.position,
+		x1 = position,
+		x2 = position + [0,1,0];
+	
+  	var t = ((x1 - x0) * (x2 - x1))/(Modulus(x2 - x1) ^ 2);
+  	
+  	t = min(max(0, t), 1);
+  	
+  	var nearestPoint = x1 + t*(x2 - x1);
+  	
+  	var distance = Modulus(nearestPoint - x0);
+  	
+  	if (distance < 1 + bullet.radiusOfInfluence) {
+  		return true;
+  	}
+  	return false;
+}
+
 
 #endif

@@ -156,7 +156,7 @@ function PlayerGFX::Draw()
 		jumpFx.Play();
 		playJump = false;
 	}
-	if (playHit == true) {
+	if (playHit) {
 		hitFx.Play();
 		playHit = false;
 	}
