@@ -1,18 +1,21 @@
 #ifndef LEVEL_S3D
 #define LEVEL_S3D
 
+#include "utils.s3d"
+
 var level_matrix;
 
 class level
 {
-	var wall_meshes;
-	var wall_obj_array;
-	var floor_mesh;
-	var wall_material;
-	var wall_texture;
-	var floor_material;
-	var floor_texture;
+	var wallMeshes;
+	var wallObjArray;
+	var floorMesh;
+	var wallMaterial;
+	var wallTexture;
+	var floorMaterial;
+	var floorTexture;
 	var freeIndexes;
+	var skyMesh;
 	
 	Init(level_textfile);
 	Draw();
@@ -22,38 +25,38 @@ class level
 
 function level::init(level_textfile)
 {
-	wall_texture = CVmTexture("mattoni03.png");
-	wall_material = CVmMaterial();
-	wall_material.SetTexture(wall_texture);
-	wall_material.ChangeTextureParams(VR_V_TILING, 3);
+	wallTexture = CVmTexture("mattoni03.png");
+	wallMaterial = CVmMaterial();
+	wallMaterial.SetTexture(wallTexture);
+	wallMaterial.ChangeTextureParams(VR_V_TILING, 3);
 	
 	freeIndexes = Array(0);
 	
-	wall_obj_array = array(0);
-	wall_meshes = Array(3);
+	wallObjArray = array(0);
+	wallMeshes = Array(3);
 	var f = LoadFile(level_textfile);
 	trace(f);
-	var num_rows = len(f);
-	var num_columns = len(f[0]);
-	level_matrix = array(num_rows);
-	trace(num_rows,num_columns);
-	for(var i=0; i< num_rows; i++)
+	var numRows = len(f);
+	var numColumns = len(f[0]);
+	level_matrix = array(numRows);
+	trace(numRows,numColumns);
+	for(var i=0; i< numRows; i++)
 	{
-		level_matrix[i] = array(num_columns);
-		for(var j=0; j< num_columns; j++) {
+		level_matrix[i] = array(numColumns);
+		for(var j=0; j< numColumns; j++) {
 			if (f[i][j] != " ") {
 				var height = val(f[i][j]);
-				var mesh = wall_meshes[height-1];
+				var mesh = wallMeshes[height-1];
 				if (mesh == void) {
 					mesh = CVmNewMesh(VRP_BOX);
-					mesh.SetMaterial(wall_material);
-					wall_meshes[height-1] = mesh;
+					mesh.SetMaterial(wallMaterial);
+					wallMeshes[height-1] = mesh;
 				}
 				var t = CVmObj(mesh);
 				t.SetPosition(j, 0, i);
 				t.setScale(1, height, 1);
-				aadd(wall_obj_array, t);
-				level_matrix[i][j] = len(wall_obj_array) - 1;
+				aadd(wallObjArray, t);
+				level_matrix[i][j] = len(wallObjArray) - 1;
 			} else{
 				level_matrix[i][j] = -1;
 				aadd(freeIndexes, {i,j});
@@ -61,26 +64,30 @@ function level::init(level_textfile)
 		}
 	}	
 	
-	floor_material = CVmMaterial();
-	floor_texture  = CVMtexture("marmo.png");
-	floor_material.SetTexture(floor_texture);
-	floor_material.ChangeTextureParams(VR_U_TILING,4);
-	floor_material.ChangeTextureParams(VR_V_TILING,4);
+	floorMaterial = CVmMaterial();
+	floorTexture  = CVMtexture("marmo.png");
+	floorMaterial.SetTexture(floorTexture);
+	floorMaterial.ChangeTextureParams(VR_U_TILING, 4);
+	floorMaterial.ChangeTextureParams(VR_V_TILING, 4);
 	
+	floorMesh = CVmNewMesh(VRP_BOX);
+	floorMesh.scale(numColumns, 1, numRows);
+	floorMesh.translate(0, -1, 0);
+	floorMesh.SetMaterial(floorMaterial);
+	floorMesh.ModulateMaterials(0, 1, 0, 1);
 	
-	floor_mesh = CVmNewMesh(VRP_BOX);
-	floor_mesh.scale(num_columns,1,num_rows);
-	floor_mesh.translate(0,-1,0);
-	floor_mesh.SetMaterial(floor_material);
-	floor_mesh.ModulateMaterials(0,1,0,1);	
+	var m = max(numColumns, numRows);
+	skyMesh = CVmNewMesh("Sky.aam");
+	skyMesh.Translate(numColumns/2, 0, numRows/2);
 }
 
 
 function Level::draw()
 {
-	foreach (var t in wall_obj_array)
+	foreach (var t in wallObjArray)
 		t.Draw();
-	floor_mesh.draw();
+	floorMesh.draw();
+	skyMesh.Draw();
 }
 
 function Level::GetWallObjAtPosition(position) {
@@ -90,7 +97,7 @@ function Level::GetWallObjAtPosition(position) {
 	if (wallIdx == -1) {
 		return;
 	}
-	return wall_obj_array[wallIdx];
+	return wallObjArray[wallIdx];
 }
 
 #endif
