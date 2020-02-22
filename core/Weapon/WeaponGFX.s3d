@@ -1,0 +1,77 @@
+#ifndef WEAPON_GFX_S3D
+#define WEAPON_GFX_S3D
+
+#include "../Bullet/BulletGFX.s3d"
+
+class WeaponGFX: WeaponModel {
+	// graphic
+	var mesh;
+	var obj;
+	// sound
+	var shootFx;
+	var reloadFx;
+	
+	var playReload;
+	
+	Init(meshPath, scaleFactor, soundPath, reloadSoundPath);
+	Shoot(position, direction);
+	Draw(); //
+	Reload(nBul);
+	
+	hasShoot();
+};
+
+function WeaponGFX::Init(meshPath, scaleFactor, shootSountPath, reloadSoundPath) {
+	
+	mesh = CVMNewMesh(meshPath);
+	mesh.scale(scaleFactor);
+	obj = CVMObj(mesh);
+	
+	shootFx = CVmVRAWAV(shootSountPath);
+	reloadFx = CVmVRAWAV(reloadSoundPath);
+	
+	playReload = false;
+}
+
+function WeaponGFX::Shoot(position, direction){
+	if (!hasShoot() && nBullets > 0) {
+		position += [0,1,0] + 1.0*direction;
+		var b = BulletGFX(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
+		b.Init();
+		shootFx.play();
+		nextShootTimeout = attackInterval;
+		nBullets--;
+		return b;
+	}
+}
+
+function WeaponGFX::Reload(nBul) {
+	var ret = WeaponModel::this.Reload(nBul);
+	if (ret > 0) {
+//		playReload = true;
+		reloadFx.Play();
+	}
+	return ret;
+}
+
+function WeaponGFX::Draw() {
+}
+
+function NewRocketLauncher(pid, scaleFactor) {
+	
+	var wGfx = WeaponGFX(pid, 1.0, 5, 3, 3.0, 0.3);
+	wGfx.Init("rocketl.aam", scaleFactor, "shoot.wav", "rocketLauncherReload.wav");
+	
+	return wGfx;
+}
+
+function NewRailGun(pid, scaleFactor) {
+	
+	var wGfx = WeaponGFX(pid, 0.2, 1, 50, 1.5, 0.05);
+	wGfx.Init("railgun.aam", scaleFactor, "shoot.wav", "rocketLauncherReload.wav");
+	
+	return wGfx;
+}
+
+
+#endif

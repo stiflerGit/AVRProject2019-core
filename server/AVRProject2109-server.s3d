@@ -1,0 +1,319 @@
+/* Include s3d symbols */
+#include <Script3d.h>
+
+#include "../core/Player/PlayerModel.s3d"
+
+// TODO: put your global variables here
+#define CONF_SERVER_ADDRESS "localhost"
+#define CONF_SERVER_PORT 5555
+
+// max number of players
+#define CONF_MAX_NPLAYERS 2
+
+var mylevel;
+
+var inputCh;
+var clients = Array(CONF_MAX_NPLAYERS);
+var freeIDs = Array(0);
+
+function delFirstFreeID() {
+	if (len(freeIDs)>0) {
+		var id = freeIDs[0];
+		adel(freeIDs, 0);
+		return id;
+	}
+}
+
+function addFreeID(ID) {
+	aadd(freeIDs, ID);
+}
+
+function main();
+
+function acceptNewClient();
+function receiveDataFromClient(clientCh);
+function sendDataToClient(clientCh, data);
+function sendDataToAllClients(data);
+
+function initNewPlayer(ID);
+function initNewClient();
+function clientClose(client);
+
+function checkBulletsCollision(pp);
+
+function OnDownload()
+{
+	// TODO: download your resources here
+	// E.g.: FileDownload("resource.ext");
+	FileDownload("../XVRResources.zip");
+}
+
+function OnInit(params)
+{
+	OutputLN("");
+	OutputLN("init server");
+
+	OutputLN("init server level");
+	mylevel = level();
+	mylevel.init("level.txt");
+	OutputLN("server level initialized");
+	
+	OutputLN("creating listen channel");
+	inputCh = NetCreateChannelTCP(CONF_SERVER_PORT, CONF_SERVER_ADDRESS);
+	if (inputCh == -1) {
+		OutputLN("error NetCreateChannelTCP");
+		Quit(inputCh);
+	}
+	OutputLN("listen channel created");
+	
+	for(var i=0; i<CONF_MAX_NPLAYERS; i++) {
+		aadd(freeIDs, i);
+	}
+	
+	SetTimeStep(200);
+
+}
+
+function OnFrame() {
+	var isDataReady;
+	var update = false;
+	
+	// check new player connection	
+	isDataReady = NetDataReady(inputCh);
+	if(isDataReady) {
+		OutputLN("new client connected");
+		var ret = initNewClient();
+		var pid = ret[0], error = ret[1];
+		if (error != void) {
+			Quit(error);
+		}
+		
+		var playerModels = Array(CONF_MAX_NPLAYERS);
+		for (var i = 0; i < len(clients); i++) {
+			if (clients[i] == void) {
+				playerModels[i] = void;
+				continue;
+			}
+	
+			var player = clients[i][1];
+			playerModels[i] = clients[i][1].Marshall();
+        }
+        sendDataToAllClients(playerModels);
+	}
+	// update players models
+	for (var i = 0; i < len(clients); i++) {
+		if (clients[i] == void) {
+			continue;
+		}
+		
+		var ch = clients[i][0], player = clients[i][1];
+	
+		var data = 0;	
+		isDataReady = NetDataReady(ch);			
+		if (isDataReady) {
+			data = receiveDataFromClient(ch);
+			if (data == void){
+				clientClose(i);
+				continue;
+			}
+		}
+		
+		checkBulletsCollision(player);
+		player.Update(data);
+	}
+		
+}
+
+function OnTimer(){
+	static var oldplayerModels = Array(CONF_MAX_NPLAYERS);
+	static var c = 0;
+//	OutputLN(c);
+	c++;
+	if (c%5 != 0) {
+		return;
+	}
+	
+	var playerDeltaModels = Array(CONF_MAX_NPLAYERS);
+	var update = false;
+	for (var i = 0; i < len(clients); i++) {
+		if (clients[i] == void) {
+			if (oldplayerModels[i] != void) {
+				if (len(oldplayerModels[i]) != 0) {
+					oldPlayerModels[i] = {};
+					update = true;	
+				} else {
+					oldplayerModels[i] = void;
+				}	
+			}
+			continue;
+		}
+		
+		var ch = clients[i][0], player = clients[i][1];
+		
+		if (oldplayerModels[i] == void) {
+			playerDeltaModels[i] = player.Marshall();
+		} else {
+			playerDeltaModels[i] = player.MarshallDelta(oldPlayerModels[i]); 
+		}
+		
+		if (playerDeltaModels[i] != void) {
+			update = true;
+		}
+		
+		oldPlayerModels[i] = player.Marshall();
+		player.RemoveVoidBullets();
+	}
+	
+	if(update) {
+		sendDataToAllClients(playerDeltaModels);	
+	}
+}
+
+function checkBulletsCollision(pp){
+	var bullets = pp.shootedBullets;
+	 
+	for (var i=0; i<len(bullets); i++) {
+		var bullet = bullets[i];
+		
+		if (bullet == void) {
+			continue;
+		}
+		
+		for (var j=0; j<len(clients); j++) {
+			if (clients[j] == void) {
+				continue;
+			}
+			var ch = clients[j][0], player = clients[j][1];
+			
+			if (bullet.pid == player.ID) {
+				continue;
+			}
+				
+			if (player.isCollidingWithBullet(bullet)) {
+				player.Hp -= bullet.damage;
+				outputLn("player ", pp.ID, " hit player ", player.ID);
+				if (player.Hp <= 0){
+					// player dead; do something ??
+					OutputLn("player ", pp.ID, " kill player ", player.ID);
+				}
+				pp.shootedBullets[i] = void;
+				break;
+			}
+		}
+	}
+	// collision with walls
+	for (var i=0; i<len(bullets); i++) {
+		var bullet = bullets[i];
+
+		if(bullet == void) {
+			continue;
+		}
+		
+		var wall = mylevel.GetWallObjAtPosition(bullet.position);
+		if (wall != void) {
+			pp.shootedBullets[i] = void;
+		}
+	}
+}
+
+/**
+ * \brief receive data from client channel
+ * 
+ * data is an array
+ * 
+ * \return data received
+ */
+function receiveDataFromClient(inputCh) {
+	var data = NetVarReceiveFromTCP(inputCh);
+	OutputLN("receiveDataFromClient: ", data);
+	return data;
+}
+
+function sendDataToClient(outputCh, data) {
+	NetVarSendToTCP(outputCh, data);
+}
+
+function sendDataToAllClients(data) {
+//	OutputLN("sendDataToAllClient: ", data);
+	foreach(var client in clients) {
+		if (client != void) {
+			var ch = client[0];
+			sendDataToClient(ch, data);	
+		}
+	}
+}
+
+/**
+ * \brief accept a new connection with a client
+ * 
+ * \return client channel, eventual error
+ */
+function acceptNewClient(){
+	var clientCh = -1;
+	while(clientCh == -1){
+		clientCh = NetAcceptTCP(inputCh, VR_NO_BLOCKING);	
+		if (clientCh == 0){
+			return {clientCh, "NetAcceptTCP: " + str(clientCh)};
+		}
+	}
+	return {clientCh, void};
+}
+
+/**
+ * \brief 
+ */
+function initNewClient() {
+	var ret = acceptNewClient();
+	var clientCh = ret[0], err = ret[1];
+	if (err != void) {
+		OutputLN("acceptNewClient: ", err);
+		return {void, Sprintf("acceptNewClient: %s\n", err)};
+	}
+	// initialize a player model
+	var pid = delFirstFreeID();
+	var p = initNewPlayer(pid);
+	clients[pid] = {clientCh, p};
+	// responce to client
+	var model = p.Marshall();
+	sendDataToClient(clientCh, model);
+	return {pid, void};
+}
+
+// TODO: position eventually far away from other players
+function initNewPlayer(pid) {
+	
+	var maxVal = len(myLevel.freeIndexes);
+	var freeIndex = myLevel.freeIndexes[Rand(maxVal)];
+	var pos = [freeIndex[1], 0, freeIndex[0]];
+	
+	var p = PlayerModel(mylevel, pid, pos);
+   	
+	return p;
+}
+
+function clientClose(id) {
+	var client = clients[id];
+	clients[id] = void;
+	addFreeID(id);
+	var ch = client[0], p = client[1];
+	NetClose(ch);
+//	TODO: p.free???
+}
+
+//function DownloadReady(RequestID){}
+//
+
+//
+//function OnEvent(eventID, wparam, lparam){
+//	// TODO: put your events handling code here
+//}
+//
+//function OnError(){
+//	// TODO: put your errors handling code here
+//}
+//
+//
+//function OnExit()
+//{
+//	// TODO: put your cleanup code here
+//}

@@ -1,0 +1,310 @@
+/* Include s3d symbols */
+#include <Script3d.h>
+#include <Camera.s3d.h>
+
+#include "../core/Player/PlayerGFX.s3d"
+#include "../core/Level.s3d"
+
+#define CONF_MULTIPLAYER false
+#define CONF_SERVER_ADDRESS "localhost"
+#define CONF_SERVER_PORT 5555
+#define CONF_MAX_NPLAYERS 2
+
+/* Set global scene parameters */
+SET SCENE_FOV  = 60;
+SET SCENE_NEAR = 0.5;
+SET SCENE_FAR  = 1000;
+
+// TODO: put your global variables here
+var myCh; /**< channel of communication with the server */
+
+/* Camera globals */
+var Camera;
+var CamPos = [0.0, 5.0, 10.0]; 	// camera position
+var CamDir = [1.0, 0.0, 0.0];
+
+/* Light globals */
+var Light0;
+var PosL = [16.0, 16.0, 16.0];	// default light position
+
+var mylevel;
+
+var myID; /**< playerID, used also to access to the players array */
+var players = Array(CONF_MAX_NPLAYERS); /**< players */
+
+function receiveDataFromServer();
+function sendDataToServer(data);
+
+function setAllPlayersModels(data);
+
+/* Function declarations */
+function CameraMoveMouse();
+function CameraFollowPlayer();
+function CameraFirstPerson();
+function CameraThirdPerson();
+function DrawGrid(col, size);
+function Controller();
+
+function OnDownload()
+{
+	// TODO: download your resources here
+	// E.g.: FileDownload("resource.ext");
+	FileDownload("../XVRResources.zip");
+}
+
+function OnInit(params)
+{
+//	/* initialize camera */
+	Camera = CameraGetCurrent();
+//	Camera.SetPosition(CamPos);
+//	Camera.SetDirection(CamDir);
+
+	/* initialize light */
+	Light0 = CVmLight();
+	Light0.SetPosition(PosL);
+	Light0.SetDiffuse(1, 1, 1);
+	Light0.Enable();	
+
+	// TODO: put your initialization code here
+	mylevel = level();
+	mylevel.init("level.txt");
+	
+	var initialModel;
+	if (CONF_MULTIPLAYER) {
+		OutputLN("multiplayer");
+		OutputLN("trying to connect to server");
+		myCh = NetConnectTCP(CONF_SERVER_ADDRESS, CONF_SERVER_PORT);
+		if(myCh == 0) {
+			OutputLN("error connecting to server");
+			Quit(myCh);	
+		}
+		OutputLN("server connection estabilished");
+		initialModel = receiveDataFromServer();
+		OutputLN("receive initModel from server");
+	} else {
+		OutputLN("single player mode");
+		var p = PlayerModel(mylevel, 0, [2.0,0,2.0]);
+		initialModel = p.Marshall();
+	}
+
+	myID = initialModel[0][1];
+	
+	var myPlayer = PlayerGfx(mylevel, myID, [0,0,0]);
+	myPlayer.Init([1,0,0]);
+	myPlayer.Unmarshall(initialModel);
+	players[myID] = myPlayer;
+}
+
+function OnFrame()
+{	
+	static var isCamFPV = true;
+	var isDataReady;
+	
+	/* manage camera */
+	if (keypressed(VK_F3)) {
+		isCamFPV = !isCamFPV;
+	}
+	if (isCamFPV) {
+		CameraFirstPerson();	
+	} else {
+		CameraFollowPlayer();
+	}
+	
+	if(CONF_MULTIPLAYER) {
+		isDataReady = NetDataReady(myCh);
+		if(isDataReady) {
+			var data = receiveDataFromServer();
+			if (data == void) {
+				OutputLN("server connection lost");
+				Quit(data);
+			}
+			setAllPlayersModels(data);
+		}	
+	}
+	
+	var event = Controller();
+	if (CONF_MULTIPLAYER&& event != 0) {
+		sendDataToServer(event);
+	}
+	var myplayer = players[myID];
+	myPlayer.Update(event);
+	
+	SceneBegin();
+	
+	DrawGrid([0.5, 0.5, 0.5], 100);
+	mylevel.draw();
+	
+	for(var i=0; i<len(players); i++){
+		if (players[i] != void) {
+			players[i].Draw();	
+		}
+	}
+	
+	SceneEnd();
+	
+	myPlayer.RemoveVoidBullets();
+}
+
+function setAllPlayersModels(models) {
+	for(var i=0; i < len(models); i++) {
+		var model = models[i];
+		if (model != void) {
+			
+			if (len(model) == 0) {
+				players[i] = void;
+				continue;
+			}
+			
+			if (players[i] == void) {
+				var col = [0,0,0];
+				col[i]=1;
+				players[i] = PlayerGFX(i, myLevel,[0.0, 0.0, 0.0]);
+				players[i].Init(col);
+			}
+			players[i].Unmarshall(model);
+		}
+	}
+}
+
+function receiveDataFromServer() {
+	static var msgNumber = 1;
+	var data = NetVarReceiveFromTCP(myCh);
+	OutputLN("receiveDataFromServer: ", data);
+	if (data == void){
+	//	channel closed?? connection lost
+	} 	
+	return data;
+	
+}
+
+function sendDataToServer(data){
+	OutputLN("sendDataToServer: ", data);
+	NetVarSendToTCP(myCh, data);
+}
+
+function DownloadReady(RequestID)
+{
+	// TODO
+}
+
+function OnTimer()
+{
+	// TODO:
+}
+
+
+function OnEvent(eventID, wparam, lparam){
+	// TODO: put your events handling code here
+}
+
+function OnError(){
+	// TODO: put your errors handling code here
+}
+
+
+function OnExit()
+{
+	// TODO: put your cleanup code here
+	NetClose(myCh);
+}
+
+// Camera manager (using mouse)
+function CameraMoveMouse()
+{	
+	CameraMoveMouse_MBL_LC();
+}
+
+function CameraFirstPerson() {
+	var myplayer = players[myID];
+	var headPos;
+	headPos = myplayer.getHeadPosition();
+	if (CamPos != headPos) {
+		Camera.SetPosition(CamPos);	
+		CamPos = headPos;
+	}
+	
+	var headDir = myplayer.direction; 
+
+	if (CamDir != headDir){
+		Camera.SetDirection(myplayer.direction);
+		CamDir = myplayer.direction;
+	}
+}
+
+function CameraFollowPlayer() 
+{
+	var myplayer = players[myID];
+	var playerPosition = myplayer.position;
+	var playerMinusCam, distance;
+	playerMinusCam = playerPosition - CamPos;
+	playerMinusCam[1] = 0.0;
+	// compute xy distance from player
+	distance = modulus(playerMinusCam);
+	if (distance > 10.0) {
+		CamPos[0] = CamPos[0] + playerMinusCam[0] / 100.0;
+		CamPos[2] = CamPos[2] + playerMinusCam[2] / 100.0;
+		Camera.SetPosition(CamPos);
+	}
+	Camera.SetTarget(playerPosition);	
+}
+
+function Controller() {
+	var event = 0;
+	
+	if(keypressed(VK_SHIFT)) {
+		event |= PLAYER_RUN;
+	}
+	
+	if(keypressed("d")) {
+		event |= PLAYER_RIGHT;
+	} else if (keypressed("a")) {
+		event |= PLAYER_LEFT;
+	}
+	
+	if(keypressed("w")) {
+		event |= PLAYER_UP;
+	} else if(keypressed("s")) {
+		event |= PLAYER_DOWN;
+	}
+	
+	if(keypressed(VK_SPACE)) {
+		event |= PLAYER_JUMP;
+	}
+	
+	if (keypressed("r", false)) {
+		event |= PLAYER_RELOAD;
+	}
+	
+	if (Mouse.ButtonL) {
+		event |= PLAYER_SHOOT;
+	}
+	
+	return event;
+}
+
+function DrawGrid(col, size)
+{
+	/* let's not mess up current OpenGL status */
+	glPushAttrib(GL_LIGHTING_BIT | GL_LINE_BIT | GL_CURRENT_BIT);
+	
+	glLineWidth(1);
+	glDisable(GL_LIGHTING);
+	glColor(col);
+	var max = size / 2.0;
+	var min = -max;	
+	var step = size / 10.0;
+	
+	glBegin(GL_LINES);
+		for (var i = min; i <= max; i += step)
+		{
+			glVertex(i, 0, max);
+			glVertex(i, 0, min);
+			
+			glVertex(max, 0, i);
+			glVertex(min, 0, i);
+		}
+	glEnd();
+	
+	/* polite restoration of previous OpenGL status */
+	glPopAttrib();
+}

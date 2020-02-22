@@ -1,0 +1,103 @@
+#ifndef LEVEL_S3D
+#define LEVEL_S3D
+
+#include "utils.s3d"
+
+var level_matrix;
+
+class level
+{
+	var wallMeshes;
+	var wallObjArray;
+	var floorMesh;
+	var wallMaterial;
+	var wallTexture;
+	var floorMaterial;
+	var floorTexture;
+	var freeIndexes;
+	var skyMesh;
+	
+	Init(level_textfile);
+	Draw();
+	GetWallObjAtPosition(position);
+};
+
+
+function level::init(level_textfile)
+{
+	wallTexture = CVmTexture("mattoni03.png");
+	wallMaterial = CVmMaterial();
+	wallMaterial.SetTexture(wallTexture);
+	wallMaterial.ChangeTextureParams(VR_V_TILING, 3);
+	
+	freeIndexes = Array(0);
+	
+	wallObjArray = array(0);
+	wallMeshes = Array(3);
+	var f = LoadFile(level_textfile);
+	trace(f);
+	var numRows = len(f);
+	var numColumns = len(f[0]);
+	level_matrix = array(numRows);
+	trace(numRows,numColumns);
+	for(var i=0; i< numRows; i++)
+	{
+		level_matrix[i] = array(numColumns);
+		for(var j=0; j< numColumns; j++) {
+			if (f[i][j] != " ") {
+				var height = val(f[i][j]);
+				var mesh = wallMeshes[height-1];
+				if (mesh == void) {
+					mesh = CVmNewMesh(VRP_BOX);
+					mesh.SetMaterial(wallMaterial);
+					wallMeshes[height-1] = mesh;
+				}
+				var t = CVmObj(mesh);
+				t.SetPosition(j, 0, i);
+				t.setScale(1, height, 1);
+				aadd(wallObjArray, t);
+				level_matrix[i][j] = len(wallObjArray) - 1;
+			} else{
+				level_matrix[i][j] = -1;
+				aadd(freeIndexes, {i,j});
+			}
+		}
+	}	
+	
+	floorMaterial = CVmMaterial();
+	floorTexture  = CVMtexture("marmo.png");
+	floorMaterial.SetTexture(floorTexture);
+	floorMaterial.ChangeTextureParams(VR_U_TILING, 4);
+	floorMaterial.ChangeTextureParams(VR_V_TILING, 4);
+	
+	floorMesh = CVmNewMesh(VRP_BOX);
+	floorMesh.scale(numColumns, 1, numRows);
+	floorMesh.translate(0, -1, 0);
+	floorMesh.SetMaterial(floorMaterial);
+	floorMesh.ModulateMaterials(0, 1, 0, 1);
+	
+	var m = max(numColumns, numRows);
+	skyMesh = CVmNewMesh("Sky.aam");
+	skyMesh.Translate(numColumns/2, 0, numRows/2);
+}
+
+
+function Level::draw()
+{
+	foreach (var t in wallObjArray)
+		t.Draw();
+	floorMesh.draw();
+	skyMesh.Draw();
+}
+
+function Level::GetWallObjAtPosition(position) {
+	var i = int(position.z);
+	var j = int(position.x);
+	var wallIdx = level_matrix[i][j];
+	if (wallIdx == -1) {
+		return;
+	}
+	return wallObjArray[wallIdx];
+}
+
+#endif

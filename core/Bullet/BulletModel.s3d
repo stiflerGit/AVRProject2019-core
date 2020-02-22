@@ -1,0 +1,141 @@
+#ifndef BULLET_MODEL_S3D
+#define BULLET_MODEL_S3D
+
+#define BULLET_DEFAULT_SPEED 0.2
+
+class BulletModel {
+	// playerID
+	var Pid;
+	// model
+	var position;
+	var direction;
+	var speed;
+	var damage;
+	var radiusOfInfluence;
+	
+	Marshall();
+	MarshallDelta(model);
+	Unmarshall(model);
+	Update();
+	IsCollidingWithPoint(point);
+	IsCollidingWithSphere(center, radius);
+};
+
+function BulletModel::BulletModel(pid, position, direction, speed, damage, radiusOfInfluence) {
+	
+	this.pid = pid;
+	
+	this.position = position;
+	
+	this.direction = direction;
+	
+	if (speed == void){
+		speed = BULLET_DEFAULT_SPEED; 
+	}
+	this.speed = speed;
+	
+	this.damage = damage;
+	
+	this.radiusOfInfluence = radiusOfInfluence;
+}
+
+function BulletModel::Marshall() {
+	return {
+		{ "Pid", Pid},
+		{ "position", position},
+		{ "direction", direction},
+		{ "speed", speed},
+		{ "damage", damage}
+	};
+}
+
+function BulletModel::MarshallDelta(model) {
+	var myModel = this.Marshall();
+	
+	if (len(model) == 0) {
+		return myModel;
+	}
+	
+	var deltaModel = Array(0);
+	for (var i=0,j=0; i<len(myModel); i++){
+		var myModelKey = myModel[i][0], myModelVal = myModel[i][1];
+		
+		if (myModelkey=="shootedBullets" || j >= len(model)) {
+			aadd(deltaModel, myModel[i]);
+			continue;
+		}
+		
+		var modelKey = model[j][0], modelVal = model[j][1];
+		
+		if(myModelKey == modelKey) {
+			if (myModelVal != modelVal) {
+				aadd(deltaModel, myModel[i]);
+			}
+			j++;
+		} else {
+			aadd(deltaModel, myModel[i]);	
+		}
+		
+	}
+	
+	if(len(deltaModel) == 0) {
+		return void;
+	}
+		
+	return deltaModel;
+}
+
+function BulletModel::Unmarshall(model){
+	
+	if (len(model) == 0) {
+		return;
+	}
+	
+	foreach(var field in model) {
+		var key = field[0], value = field[1];
+		
+		switch(key) {
+		case "Pid":
+			this.Pid = value;
+			break;
+		case "position":
+			this.position = value;
+			break;
+		case "direction":
+			this.direction = direction;
+			break;
+		case "speed":
+			this.speed = speed;
+			break;
+		case "damage":
+			this.damage = damage;
+			break;
+		}
+	}
+}
+
+function BulletModel::Update() {
+	position += direction*speed;
+}
+
+function BulletModel::IsCollidingWithPoint(point) {
+	var delta = point - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence) {
+		return true;
+	}
+	return false;
+}
+
+function BulletModel::IsCollidingWithSphere(center, radius) {
+	var delta = center - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence + radius) {
+		return true;
+	}
+	return false; 
+}
+
+#endif
