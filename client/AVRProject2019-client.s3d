@@ -4,6 +4,7 @@
 
 #include "../core/Player/PlayerGFX.s3d"
 #include "../core/Level.s3d"
+#include "KeyBinding.s3d"
 
 #define CONF_MULTIPLAYER false
 #define CONF_SERVER_ADDRESS "localhost"
@@ -38,12 +39,12 @@ function sendDataToServer(data);
 function setAllPlayersModels(data);
 
 /* Function declarations */
-function CameraMoveMouse();
+function playerController();
+function cameraController();
 function CameraFollowPlayer();
 function CameraFirstPerson();
 function CameraThirdPerson();
 function DrawGrid(col, size);
-function Controller();
 
 function OnDownload()
 {
@@ -95,23 +96,10 @@ function OnInit(params)
 	players[myID] = myPlayer;
 }
 
-function OnFrame()
-{	
-	static var isCamFPV = true;
-	var isDataReady;
-	
-	/* manage camera */
-	if (keypressed(VK_F3)) {
-		isCamFPV = !isCamFPV;
-	}
-	if (isCamFPV) {
-		CameraFirstPerson();	
-	} else {
-		CameraFollowPlayer();
-	}
-	
+function OnFrame() {
+		
 	if(CONF_MULTIPLAYER) {
-		isDataReady = NetDataReady(myCh);
+		var isDataReady = NetDataReady(myCh);
 		if(isDataReady) {
 			var data = receiveDataFromServer();
 			if (data == void) {
@@ -122,8 +110,9 @@ function OnFrame()
 		}	
 	}
 	
-	var event = Controller();
-	if (CONF_MULTIPLAYER&& event != 0) {
+	cameraController();
+	var event = playerController();
+	if (CONF_MULTIPLAYER && event != 0) {
 		sendDataToServer(event);
 	}
 	var myplayer = players[myID];
@@ -170,15 +159,11 @@ function receiveDataFromServer() {
 	static var msgNumber = 1;
 	var data = NetVarReceiveFromTCP(myCh);
 	OutputLN("receiveDataFromServer: ", data);
-	if (data == void){
-	//	channel closed?? connection lost
-	} 	
 	return data;
 	
 }
 
 function sendDataToServer(data){
-	OutputLN("sendDataToServer: ", data);
 	NetVarSendToTCP(myCh, data);
 }
 
@@ -208,12 +193,53 @@ function OnExit()
 	NetClose(myCh);
 }
 
-// Camera manager (using mouse)
-function CameraMoveMouse()
-{	
-	CameraMoveMouse_MBL_LC();
+/**
+ * 
+ */
+function playerController() {
+	static var kbs = KeyBindings({
+		KeyBinding(VK_SHIFT, PLAYER_RUN, 0.0),
+		KeyBinding("d", PLAYER_RIGHT, 0.0),
+		KeyBinding("a", PLAYER_LEFT, 0.0),
+		KeyBinding("w", PLAYER_UP, 0.0),
+		KeyBinding("s", PLAYER_DOWN, 0.0),
+		KeyBinding(VK_SPACE, PLAYER_JUMP, 0.0),
+		KeyBinding("r", PLAYER_RELOAD, 0.0),
+		KeyBinding(KB_MOUSEL, PLAYER_SHOOT, 0.0)
+	});
+	
+	return kbs.OrEvents();
 }
 
+#define CAMERA_SWITCH 1
+/**
+ * 
+ */
+function cameraController() {
+	static var cameraFunc = 0;
+	static var kbs = KeyBinding(VK_F5, CAMERA_SWITCH, 2.0);
+
+	var evt = kbs.Event();
+	if (evt != 0) {
+		cameraFunc = (cameraFunc + 1) % 3;
+	}
+	
+	switch(cameraFunc) {
+	case 0:
+		CameraFirstPerson();
+		break;
+	case 1:
+		CameraFollowPlayer();
+		break;
+	case 2:
+		CameraMoveMouse_MBL_LC();
+		break;
+	}
+}
+
+/**
+ * 
+ */
 function CameraFirstPerson() {
 	var myplayer = players[myID];
 	var headPos;
@@ -231,6 +257,9 @@ function CameraFirstPerson() {
 	}
 }
 
+/**
+ * 
+ */
 function CameraFollowPlayer() 
 {
 	var myplayer = players[myID];
@@ -248,40 +277,9 @@ function CameraFollowPlayer()
 	Camera.SetTarget(playerPosition);	
 }
 
-function Controller() {
-	var event = 0;
-	
-	if(keypressed(VK_SHIFT)) {
-		event |= PLAYER_RUN;
-	}
-	
-	if(keypressed("d")) {
-		event |= PLAYER_RIGHT;
-	} else if (keypressed("a")) {
-		event |= PLAYER_LEFT;
-	}
-	
-	if(keypressed("w")) {
-		event |= PLAYER_UP;
-	} else if(keypressed("s")) {
-		event |= PLAYER_DOWN;
-	}
-	
-	if(keypressed(VK_SPACE)) {
-		event |= PLAYER_JUMP;
-	}
-	
-	if (keypressed("r", false)) {
-		event |= PLAYER_RELOAD;
-	}
-	
-	if (Mouse.ButtonL) {
-		event |= PLAYER_SHOOT;
-	}
-	
-	return event;
-}
-
+/**
+ * 
+ */
 function DrawGrid(col, size)
 {
 	/* let's not mess up current OpenGL status */

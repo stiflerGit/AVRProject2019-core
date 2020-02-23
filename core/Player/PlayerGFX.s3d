@@ -160,6 +160,7 @@ function PlayerGFX::Draw()
 		hitFx.Play();
 		playHit = false;
 	}
+
 }
 
 function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
