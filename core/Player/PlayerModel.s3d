@@ -7,9 +7,9 @@
 #include "../Bullet/BulletModel.s3d"
 
 // defaults
-#define PLAYER_DEFAULT_HP 100
+#define PLAYER_DEFAULT_HP 10
 #define PLAYER_DEFAULT_ANGLE 0
-#define PLAYER_DEFAULT_NOWNBULLETS 100
+#define PLAYER_DEFAULT_NOWNBULLETS 9999
 #define PLAYER_DEFAULT_STEP 0.1
 
 #define PLAYER_DEFAULT_PPPOSITION_ACCURACY 3 /**< post process postion accuracy */
@@ -28,14 +28,6 @@
 #define PLAYER_SHOOT 32
 #define PLAYER_RELOAD 64
 #define PLAYER_JUMP 128
-
-function isEventSet(event, maskEvent) {
-	var res = event & maskevent;
-	if(res == 0){
-		return false;
-	}
-	return true;
-}
 
 class PlayerModel {
 	// parent
@@ -56,19 +48,20 @@ class PlayerModel {
 	var isInTheAir;
 	var hp;
 	
-	Init(col);
-	Draw();
+	Restart(position, nOwnedBullets, hp, weapon);
+	IsDead();
+	GetHeadPosition();
+	Update(event);
+	RemoveVoidBullets();
+	IsCollidingWithBullet(bullet);
+	//
 	Marshall();
 	MarshallDelta(model);
 	Unmarshall(model);
 	UnmarshallShootedBullets(model);
 	MarshallShootedBullets();
 	MarshallShootedBulletsDelta(model);
-	GetHeadPosition();
-	Update(event);
-	RemoveVoidBullets();
-	IsCollidingWithBullet(bullet);
-	
+	//
 	reload();
 	isReloading();
 	isPathCollidingWithWall(oldposition, position);
@@ -78,7 +71,10 @@ class PlayerModel {
 	postProcessIsInTheAir();
 };
 
-function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp, weapon){
+/**
+ * 
+ */
+function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp, weapon) {
 	
 	this.level = level;
 	
@@ -102,7 +98,6 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	}
 	this.nOwnedBullets = nOwnedBullets;
 	
-	this.nOwnedBullets = nOwnedBullets;
 	if (hp == void){
 		hp = PLAYER_DEFAULT_HP;
 	}
@@ -122,191 +117,51 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	shootedBullets = Array(0);
 }
 
-function PlayerModel::Marshall() {
+/**
+ * 
+ */
+ function PlayerModel::Restart(position, nOwnedBullets, hp, weapon) {
 	
-	var bulletsData = MarshallShootedBullets();
+	this.position = position;
 	
-	var data = {
-		{"ID", ID},
-		{"position", position},
-		{"angle", angle},
-		{"direction", direction},
-		{"hVel", hVel},
-		{"vVel", vVel},
-		{"nOwnedBullets", nOwnedBullets},
-		{"reloadTimeout", reloadTimeout},
-		{"isInTheAir", isInTheAir},
-		{"hp", hp},
-		{"shootedBullets", bulletsData}
-	};
+	angle = PLAYER_DEFAULT_ANGLE;
+	direction = [sin(angle), 0, cos(angle)];
 	
-	return data;
+	if (nOwnedBullets == void){
+		nOwnedBullets = PLAYER_DEFAULT_NOWNBULLETS; 
+	}
+	this.nOwnedBullets = nOwnedBullets;
+	
+	if (hp == void){
+		hp = PLAYER_DEFAULT_HP;
+	}
+	this.hp = hp;
+	
+	if (weapon == void) {
+		weapon = NewRailgunModel(this.ID);
+	}
+	this.weapon = weapon;
+	
+	isInTheAir = false;
+	hVel = 0.0;
+	vVel = 0.0;
+	gravity = 0.0;
+	reloadTimeout = 0.0;
 }
 
 /**
- * Wath do you have to apply to model to a player to be equal to me??
+ * 
  */
-function PlayerModel::MarshallDelta(Data) {
-	var myData = this.Marshall();
-	
-	if (Data == void || len(Data) == 0) {
-		return myData;
+function PlayerModel::IsDead() {
+	if (this.Hp <= 0) {
+		return true;
 	}
-	
-	if(len(data) < len(myData)) {
-		OutputLN("ERROR len(model) < len(myModel)");
-	}
-	
-	var deltaData = Array(0);
-	for (var i=0; i<len(myData); i++){
-		var myDataKey = myData[i][0], myDataVal = myData[i][1];
-		var DataKey = Data[i][0], DataVal = Data[i][1];
-		
-		if (myDataKey=="shootedBullets") {
-//			var shootedBulletDeltaDatas = MarshallShootedBulletsDelta(DataVal);
-//			if (shootedBulletDeltaDatas != void) {
-			if (myDataVal != void) {
-				aadd(deltaData, {"shootedBullets", myDataVal});
-			}
-//			}
-			continue;
-		}
-		
-		if(DataKey != myDataKey) {
-			Quit("DataKey != myDataKey");
-		}
-		
-		if (myDataVal != DataVal) {
-			aadd(deltaData, myData[i]);
-		}
-		
-	}
-	
-	if(len(deltaData) == 0) {
-		return void;
-	}
-		
-	return deltaData;
-}
-
-function PlayerModel::Unmarshall(data) {
-	foreach(var field in data) {
-		var key = field[0], value = field[1];
-		
-		switch(key) {
-		case "ID":
-			this.ID = value;
-			break;
-		case "position":
-			this.position = value;
-			break;
-		case "angle": 
-			this.angle = value;
-			break;
-		case "direction": 
-			this.direction = value;
-			break;
-		case "hVel": 
-			this.hVel = value;
-			break;
-		case "vVel":
-			this.vVel = value;
-			break;
-		case "nOwnedBullets": 
-			this.nOwnedBullets = value;
-			break;
-		case "reloadTimeout":
-			this.reloadTimeout = value;
-			break;
-		case "isInTheAir": 
-			this.isInTheAir = value;
-			break;
-		case "hp":
-			this.hp = value;
-			break;
-		case "shootedBullets":
-			UnmarshallShootedBullets(value);
-			break;
-		}
-	}
-}
-
-function PlayerModel::UnmarshallShootedBullets(Data) {
-	if(Data == void || len(Data) == 0) {
-		return;
-	}
-	
-	asize(shootedBullets, len(Data));
-	var bulletDatas = Data;
-	for (var i=0; i < len(bulletDatas); i++) {
-		var bulletData = bulletDatas[i];
-		
-		if (bulletData == void) {
-			shootedBullets[i] = void;
-			continue;
-		}
-		
-		if (len(bulletData) == 0) {
-			continue;
-		}
-		
-		if (shootedBullets[i] == void) {
-			shootedBullets[i] = BulletModel(this.ID, [0,0,0], [0,0,0], 0, 0);
-		}
-		shootedBullets[i].Unmarshall(bulletData);
-	}
-	
-}
-
-function PlayerModel::MarshallShootedBullets() {
-	var bulletModels = Array(0);
-	foreach (var bullet in shootedBullets) {
-		if (bullet != void) {
-			aadd(bulletModels, bullet.Marshall());	
-		} else {
-			aadd(bulletModels, void);
-		}
-	}
-	
-	if (len(bulletModels) == 0) {
-		return void;
-	}
-	
-	return bulletModels;
-}
-
-
-function PlayerModel::MarshallShootedBulletsDelta(model) { 
-		
-	if(model == void || len(model) == 0) {
-		return MarshallShootedBullets();
-	}
-	
-	var deltaModels = Array(0);
-	
-	for(var i=0; i<len(shootedBullets); i++) {
-		var shootedBullet = shootedBullets[i];
-		
-		if (shootedBullet == void) {
-			aadd(deltaModels, void);
-			continue;
-		}
-		
-		if (i>len(model) || model[i] == void) {
-			aadd(deltaModels, shootedBullet.Marshall());
-			continue;
-		}
-		
-		var deltaModel = shootedBullet.MarshallDelta(model[i]);
-		if (deltaModel == void) {
-			deltaModel = {};
-		}
-		
-		aadd(deltaModels, deltaModel);
-	}
-
-}
-
+	return false;
+} 
+ 
+/**
+ * 
+ */
 function PlayerModel::RemoveVoidBullets() {
 	// remove deleted bullets
 	for(var i=0; i<len(shootedBullets);){
@@ -318,15 +173,29 @@ function PlayerModel::RemoveVoidBullets() {
 	}
 }
 
-function PlayerModel::GetHeadPosition()
-{
+/**
+ * 
+ */
+function PlayerModel::GetHeadPosition() {
 	var headPosition = this.position + (0.3) * this.direction;
 	headPosition.y = headPosition.y + 1.5;
 	return (headPosition);
 }
 
-
+/**
+ * 
+ */
 function PlayerModel::Update(event) {
+	
+	if (IsDead()) {
+		// update only bullets	
+		foreach (var bullet in shootedBullets) {
+			if (bullet!= void) {
+				bullet.Update();
+			}
+		}
+		return;
+	}
 		 
 	if (!isInTheAir) {
 		var runMultiplicator = 1.0;
@@ -406,8 +275,240 @@ function PlayerModel::Update(event) {
 	
 }
 
+/**
+ * 
+ */
+function PlayerModel::IsCollidingWithBullet(bullet) {
+	if (IsDead()) {
+		return false;
+	}
+	
+	var x0 = bullet.position,
+		x1 = position,
+		x2 = position + [0,1,0];
+	
+  	var t = ((x1 - x0) * (x2 - x1))/(Modulus(x2 - x1) ^ 2);
+  	
+  	t = min(max(0, t), 1);
+  	
+  	var nearestPoint = x1 + t*(x2 - x1);
+  	
+  	var distance = Modulus(nearestPoint - x0);
+  	
+  	if (distance < 1 + bullet.radiusOfInfluence) {
+  		return true;
+  	}
+  	return false;
+}
+ 
+/**
+ * 
+ */
+function PlayerModel::Marshall() {
+	
+	var bulletsData = MarshallShootedBullets();
+	
+	var data = {
+		{"ID", ID},
+		{"position", position},
+		{"angle", angle},
+		{"direction", direction},
+		{"hVel", hVel},
+		{"vVel", vVel},
+		{"nOwnedBullets", nOwnedBullets},
+		{"reloadTimeout", reloadTimeout},
+		{"isInTheAir", isInTheAir},
+		{"hp", hp},
+		{"shootedBullets", bulletsData}
+	};
+	
+	return data;
+}
 
-function PlayerModel::Reload() {
+/**
+ * Wath do you have to apply to model to a player to be equal to me?
+ */
+function PlayerModel::MarshallDelta(Data) {
+	var myData = this.Marshall();
+	
+	if (Data == void || len(Data) == 0) {
+		return myData;
+	}
+	
+	if(len(data) < len(myData)) {
+		OutputLN("ERROR len(model) < len(myModel)");
+	}
+	
+	var deltaData = Array(0);
+	for (var i=0; i<len(myData); i++){
+		var myDataKey = myData[i][0], myDataVal = myData[i][1];
+		var DataKey = Data[i][0], DataVal = Data[i][1];
+		
+		if (myDataKey=="shootedBullets") {
+//			var shootedBulletDeltaDatas = MarshallShootedBulletsDelta(DataVal);
+//			if (shootedBulletDeltaDatas != void) {
+			if (myDataVal != void) {
+				aadd(deltaData, {"shootedBullets", myDataVal});
+			}
+//			}
+			continue;
+		}
+		
+		if(DataKey != myDataKey) {
+			Quit("DataKey != myDataKey");
+		}
+		
+		if (myDataVal != DataVal) {
+			aadd(deltaData, myData[i]);
+		}
+		
+	}
+	
+	if(len(deltaData) == 0) {
+		return void;
+	}
+		
+	return deltaData;
+}
+
+/**
+ * 
+ */
+function PlayerModel::Unmarshall(data) {
+	foreach(var field in data) {
+		var key = field[0], value = field[1];
+		
+		switch(key) {
+		case "ID":
+			this.ID = value;
+			break;
+		case "position":
+			this.position = value;
+			break;
+		case "angle": 
+			this.angle = value;
+			break;
+		case "direction": 
+			this.direction = value;
+			break;
+		case "hVel": 
+			this.hVel = value;
+			break;
+		case "vVel":
+			this.vVel = value;
+			break;
+		case "nOwnedBullets": 
+			this.nOwnedBullets = value;
+			break;
+		case "reloadTimeout":
+			this.reloadTimeout = value;
+			break;
+		case "isInTheAir": 
+			this.isInTheAir = value;
+			break;
+		case "hp":
+			this.hp = value;
+			break;
+		case "shootedBullets":
+			UnmarshallShootedBullets(value);
+			break;
+		default:
+			OutputLn("unexpected field: { \"" + key + "\": \"" + field +"\" }");
+			break;
+		}
+	}
+}
+
+/**
+ * 
+ */
+function PlayerModel::UnmarshallShootedBullets(Data) {
+	if(Data == void || len(Data) == 0) {
+		return;
+	}
+	
+	asize(shootedBullets, len(Data));
+	var bulletDatas = Data;
+	for (var i=0; i < len(bulletDatas); i++) {
+		var bulletData = bulletDatas[i];
+		
+		if (bulletData == void) {
+			shootedBullets[i] = void;
+			continue;
+		}
+		
+		if (len(bulletData) == 0) {
+			continue;
+		}
+		
+		if (shootedBullets[i] == void) {
+			shootedBullets[i] = BulletModel(this.ID, [0,0,0], [0,0,0], 0, 0);
+		}
+		shootedBullets[i].Unmarshall(bulletData);
+	}
+	
+}
+
+/**
+ * 
+ */
+function PlayerModel::MarshallShootedBullets() {
+	var bulletModels = Array(0);
+	foreach (var bullet in shootedBullets) {
+		if (bullet != void) {
+			aadd(bulletModels, bullet.Marshall());	
+		} else {
+			aadd(bulletModels, void);
+		}
+	}
+	
+	if (len(bulletModels) == 0) {
+		return void;
+	}
+	
+	return bulletModels;
+}
+
+/**
+ * 
+ */
+function PlayerModel::MarshallShootedBulletsDelta(model) { 
+		
+	if(model == void || len(model) == 0) {
+		return MarshallShootedBullets();
+	}
+	
+	var deltaModels = Array(0);
+	
+	for(var i=0; i<len(shootedBullets); i++) {
+		var shootedBullet = shootedBullets[i];
+		
+		if (shootedBullet == void) {
+			aadd(deltaModels, void);
+			continue;
+		}
+		
+		if (i>len(model) || model[i] == void) {
+			aadd(deltaModels, shootedBullet.Marshall());
+			continue;
+		}
+		
+		var deltaModel = shootedBullet.MarshallDelta(model[i]);
+		if (deltaModel == void) {
+			deltaModel = {};
+		}
+		
+		aadd(deltaModels, deltaModel);
+	}
+
+}
+
+
+/**
+ * 
+ */
+function PlayerModel::reload() {
+	
 	if (weapon.nbullets >= weapon.magazineSize){
 		return;
 	}
@@ -420,10 +521,16 @@ function PlayerModel::Reload() {
 	reloadTimeout = weapon.reloadInterval;	
 }
 
+/**
+ * 
+ */
 function PlayerModel::isReloading() {
 	return reloadTimeout > 0;
 }
 
+/**
+ * 
+ */
 function PlayerModel::isPathCollidingWithWall(oldposition, position) {
 	var wall = level.getWallObjAtPosition(position);
 	if (wall == void) {
@@ -442,12 +549,18 @@ function PlayerModel::isPathCollidingWithWall(oldposition, position) {
 	return {false, void, void, void};
 }
 
+/**
+ * 
+ */
 function PlayerModel::postProcessPosition(oldposition, newposition, accuracy) {
 	newposition._y_ = PostProcessPositionY(oldposition, newposition, accuracy);
 	newposition.x_z = PostProcessPositionXZ(oldposition, newposition, accuracy);
 	return newposition;
 }
 
+/**
+ * 
+ */
 function PlayerModel::postProcessPositionXZ(oldposition, newposition, accuracy) {
 	var ret;
 	
@@ -481,6 +594,9 @@ function PlayerModel::postProcessPositionXZ(oldposition, newposition, accuracy) 
 	return newposition;
 }
 
+/**
+ * 
+ */
 function PlayerModel::postProcessPositionY(oldposition, newposition, accuracy) {
 	var ret;
 	
@@ -504,6 +620,9 @@ function PlayerModel::postProcessPositionY(oldposition, newposition, accuracy) {
 	return newposition;
 }
 
+/**
+ * 
+ */
 function PlayerModel::postProcessIsInTheAir() {
 	var wall = level.getWallObjAtPosition(this.position);
 	var wallHeight = 0;
@@ -517,25 +636,6 @@ function PlayerModel::postProcessIsInTheAir() {
 	}
 	
 	return false;
-}
-
-function PlayerModel::isCollidingWithBullet(bullet) {
-	var x0 = bullet.position,
-		x1 = position,
-		x2 = position + [0,1,0];
-	
-  	var t = ((x1 - x0) * (x2 - x1))/(Modulus(x2 - x1) ^ 2);
-  	
-  	t = min(max(0, t), 1);
-  	
-  	var nearestPoint = x1 + t*(x2 - x1);
-  	
-  	var distance = Modulus(nearestPoint - x0);
-  	
-  	if (distance < 1 + bullet.radiusOfInfluence) {
-  		return true;
-  	}
-  	return false;
 }
 
 

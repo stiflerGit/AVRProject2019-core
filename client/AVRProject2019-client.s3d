@@ -6,7 +6,7 @@
 #include "../core/Level.s3d"
 #include "KeyBinding.s3d"
 
-#define CONF_MULTIPLAYER false
+#define CONF_MULTIPLAYER true
 #define CONF_SERVER_ADDRESS "localhost"
 #define CONF_SERVER_PORT 5555
 #define CONF_MAX_NPLAYERS 2
@@ -39,6 +39,7 @@ function sendDataToServer(data);
 function setAllPlayersModels(data);
 
 /* Function declarations */
+function gameController();
 function playerController();
 function cameraController();
 function CameraFollowPlayer();
@@ -53,12 +54,8 @@ function OnDownload()
 	FileDownload("../XVRResources.zip");
 }
 
-function OnInit(params)
-{
-//	/* initialize camera */
+function OnInit(params) {
 	Camera = CameraGetCurrent();
-//	Camera.SetPosition(CamPos);
-//	Camera.SetDirection(CamDir);
 
 	/* initialize light */
 	Light0 = CVmLight();
@@ -111,6 +108,7 @@ function OnFrame() {
 	}
 	
 	cameraController();
+	gameController();
 	var event = playerController();
 	if (CONF_MULTIPLAYER && event != 0) {
 		sendDataToServer(event);
@@ -156,7 +154,6 @@ function setAllPlayersModels(models) {
 }
 
 function receiveDataFromServer() {
-	static var msgNumber = 1;
 	var data = NetVarReceiveFromTCP(myCh);
 	OutputLN("receiveDataFromServer: ", data);
 	return data;
@@ -167,32 +164,45 @@ function sendDataToServer(data){
 	NetVarSendToTCP(myCh, data);
 }
 
-function DownloadReady(RequestID)
-{
-	// TODO
-}
+function DownloadReady(RequestID){}
 
-function OnTimer()
-{
-	// TODO:
-}
+function OnTimer(){}
 
 
-function OnEvent(eventID, wparam, lparam){
-	// TODO: put your events handling code here
-}
+function OnEvent(eventID, wparam, lparam){}
 
-function OnError(){
-	// TODO: put your errors handling code here
-}
+function OnError(){}
 
 
-function OnExit()
-{
-	// TODO: put your cleanup code here
+function OnExit() {
 	NetClose(myCh);
 }
 
+/**
+ * 
+ */
+ function gameController() {
+ 	static var kbs = KeyBindings({
+ 		KeyBinding(VK_F1, 1, 3.0)
+ 	});
+ 	
+ 	var evt = kbs.FirstEvent();
+ 	
+ 	var myplayer = players[myID];
+ 	var data;
+ 	switch(evt) {
+ 	case 1: // restart game
+ 		if (!myplayer.IsDead()) {
+ 			OutputLN("Player is not dead, you can't restart the game");
+ 			break;
+ 		}
+ 		
+ 		data = "restart";
+ 		SendDataToServer(data);
+ 		break;
+ 	}
+ }
+ 
 /**
  * 
  */
@@ -211,13 +221,12 @@ function playerController() {
 	return kbs.OrEvents();
 }
 
-#define CAMERA_SWITCH 1
 /**
  * 
  */
 function cameraController() {
 	static var cameraFunc = 0;
-	static var kbs = KeyBinding(VK_F5, CAMERA_SWITCH, 2.0);
+	static var kbs = KeyBinding(VK_F5, 1, 2.0);
 
 	var evt = kbs.Event();
 	if (evt != 0) {
@@ -260,21 +269,19 @@ function CameraFirstPerson() {
 /**
  * 
  */
-function CameraFollowPlayer() 
-{
+function CameraFollowPlayer() {
 	var myplayer = players[myID];
-	var playerPosition = myplayer.position;
+	var playerPosition = myplayer.GetHeadPosition();
 	var playerMinusCam, distance;
+	
 	playerMinusCam = playerPosition - CamPos;
-	playerMinusCam[1] = 0.0;
 	// compute xy distance from player
 	distance = modulus(playerMinusCam);
-	if (distance > 10.0) {
-		CamPos[0] = CamPos[0] + playerMinusCam[0] / 100.0;
-		CamPos[2] = CamPos[2] + playerMinusCam[2] / 100.0;
+	if (distance > 5.0) {
+		CamPos = CamPos + playerMinusCam - 5.0 * Norm(playerMinusCam);
 		Camera.SetPosition(CamPos);
 	}
-	Camera.SetTarget(playerPosition);	
+	Camera.SetTarget(playerPosition);
 }
 
 /**
@@ -293,8 +300,7 @@ function DrawGrid(col, size)
 	var step = size / 10.0;
 	
 	glBegin(GL_LINES);
-		for (var i = min; i <= max; i += step)
-		{
+		for (var i = min; i <= max; i += step) {
 			glVertex(i, 0, max);
 			glVertex(i, 0, min);
 			

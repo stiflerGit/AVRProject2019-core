@@ -1,6 +1,9 @@
 #ifndef UTILS_S3D
 #define UTILS_S3D
 
+/**
+ * 
+ */
 function min(a, b) {
 	if (a<b) {
 		return a;
@@ -8,11 +11,25 @@ function min(a, b) {
 	return b;
 }
 
+/**
+ * 
+ */
 function max(a, b) {
 	if (a>b) {
 		return a;
 	}
 	return b;
+}
+
+/**
+ * 
+ */
+function isEventSet(event, maskEvent) {
+	var res = event & maskevent;
+	if(res == 0){
+		return false;
+	}
+	return true;
 }
 
 #endif

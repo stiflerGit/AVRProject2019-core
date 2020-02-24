@@ -28,28 +28,26 @@ function addFreeID(ID) {
 	aadd(freeIDs, ID);
 }
 
-function main();
-
+// net functions
 function acceptNewClient();
 function receiveDataFromClient(clientCh);
 function sendDataToClient(clientCh, data);
 function sendDataToAllClients(data);
+function sendAllModelsToAllClients();
 
-function initNewPlayer(ID);
 function initNewClient();
 function clientClose(client);
 
 function checkBulletsCollision(pp);
+function getRandomFreePosition();
 
-function OnDownload()
-{
+function OnDownload() {
 	// TODO: download your resources here
 	// E.g.: FileDownload("resource.ext");
 	FileDownload("../XVRResources.zip");
 }
 
-function OnInit(params)
-{
+function OnInit(params) {
 	OutputLN("");
 	OutputLN("init server");
 
@@ -74,11 +72,14 @@ function OnInit(params)
 
 }
 
+/**
+ * 
+ */
 function OnFrame() {
 	var isDataReady;
 	var update = false;
 	
-	// check new player connection	
+	// check new player connection
 	isDataReady = NetDataReady(inputCh);
 	if(isDataReady) {
 		OutputLN("new client connected");
@@ -87,18 +88,7 @@ function OnFrame() {
 		if (error != void) {
 			Quit(error);
 		}
-		
-		var playerModels = Array(CONF_MAX_NPLAYERS);
-		for (var i = 0; i < len(clients); i++) {
-			if (clients[i] == void) {
-				playerModels[i] = void;
-				continue;
-			}
-	
-			var player = clients[i][1];
-			playerModels[i] = clients[i][1].Marshall();
-        }
-        sendDataToAllClients(playerModels);
+		sendAllModelsToAllClients();
 	}
 	// update players models
 	for (var i = 0; i < len(clients); i++) {
@@ -113,9 +103,17 @@ function OnFrame() {
 		if (isDataReady) {
 			data = receiveDataFromClient(ch);
 			if (data == void){
+				// client disconnected
 				clientClose(i);
 				continue;
 			}
+		}
+		
+		if (valtype(data) == "S") {
+			if (data == "restart" && player.IsDead()) {
+				player.Restart(getRandomFreePosition());
+			}
+			data = 0;
 		}
 		
 		checkBulletsCollision(player);
@@ -124,7 +122,10 @@ function OnFrame() {
 		
 }
 
-function OnTimer(){
+/**
+ * 
+ */
+function OnTimer() {
 	static var oldplayerModels = Array(CONF_MAX_NPLAYERS);
 	static var c = 0;
 //	OutputLN(c);
@@ -169,6 +170,9 @@ function OnTimer(){
 	}
 }
 
+/**
+ * 
+ */
 function checkBulletsCollision(pp){
 	var bullets = pp.shootedBullets;
 	 
@@ -217,30 +221,14 @@ function checkBulletsCollision(pp){
 }
 
 /**
- * \brief receive data from client channel
  * 
- * data is an array
- * 
- * \return data received
  */
-function receiveDataFromClient(inputCh) {
-	var data = NetVarReceiveFromTCP(inputCh);
-	OutputLN("receiveDataFromClient: ", data);
-	return data;
-}
-
-function sendDataToClient(outputCh, data) {
-	NetVarSendToTCP(outputCh, data);
-}
-
-function sendDataToAllClients(data) {
-//	OutputLN("sendDataToAllClient: ", data);
-	foreach(var client in clients) {
-		if (client != void) {
-			var ch = client[0];
-			sendDataToClient(ch, data);	
-		}
-	}
+function getRandomFreePosition() {
+	var maxVal = len(myLevel.freeIndexes);
+	var freeIndex = myLevel.freeIndexes[Rand(maxVal)];
+	var pos = [freeIndex[1], 0, freeIndex[0]];
+	
+	return pos;
 }
 
 /**
@@ -260,6 +248,55 @@ function acceptNewClient(){
 }
 
 /**
+ * \brief receive data from client channel
+ * 
+ * data is an array
+ * 
+ * \return data received
+ */
+function receiveDataFromClient(inputCh) {
+	var data = NetVarReceiveFromTCP(inputCh);
+	OutputLN("receiveDataFromClient: ", data);
+	return data;
+}
+
+/**
+ * 
+ */
+function sendDataToClient(outputCh, data) {
+	NetVarSendToTCP(outputCh, data);
+}
+
+/**
+ * 
+ */
+function sendDataToAllClients(data) {
+	foreach(var client in clients) {
+		if (client != void) {
+			var ch = client[0];
+			sendDataToClient(ch, data);	
+		}
+	}
+}
+
+/**
+ * 
+ */
+function sendAllModelsToAllClients() {
+	var playerModels = Array(CONF_MAX_NPLAYERS);
+	for (var i = 0; i < len(clients); i++) {
+		if (clients[i] == void) {
+			playerModels[i] = void;
+			continue;
+		}
+
+		var player = clients[i][1];
+		playerModels[i] = clients[i][1].Marshall();
+    }
+    sendDataToAllClients(playerModels);
+}
+
+/**
  * \brief 
  */
 function initNewClient() {
@@ -271,24 +308,12 @@ function initNewClient() {
 	}
 	// initialize a player model
 	var pid = delFirstFreeID();
-	var p = initNewPlayer(pid);
+	var p = PlayerModel(mylevel, pid, getRandomFreePosition());
 	clients[pid] = {clientCh, p};
 	// responce to client
 	var model = p.Marshall();
 	sendDataToClient(clientCh, model);
 	return {pid, void};
-}
-
-// TODO: position eventually far away from other players
-function initNewPlayer(pid) {
-	
-	var maxVal = len(myLevel.freeIndexes);
-	var freeIndex = myLevel.freeIndexes[Rand(maxVal)];
-	var pos = [freeIndex[1], 0, freeIndex[0]];
-	
-	var p = PlayerModel(mylevel, pid, pos);
-   	
-	return p;
 }
 
 function clientClose(id) {

@@ -1,0 +1,95 @@
+#ifndef KEYBINDING_S3D
+#define KEYBINDING_S3D
+
+#define KB_MOUSEL 		"mousel"
+#define KB_MOUSER		"mouser"
+#define KB_TIMER_STEP 	0.1
+
+class KeyBinding {
+	var key;
+	var evt;
+	var hitTimeout;
+	var timer;
+	
+	Event();
+	isMouse();
+};
+
+function KeyBinding::KeyBinding(key, evt, hitTimeout) {
+	this.key = key;
+	this.evt = evt;
+	this.hitTimeout = hitTimeout;
+	this.timer = 0.0;
+}
+
+function KeyBinding::isMouse() {
+	if (valtype(key) != "S") {
+		return str(key) == KB_MOUSEL || str(key) == KB_MOUSER;	
+	}
+	return key == KB_MOUSEL || key == KB_MOUSER;
+}
+
+function KeyBinding::Event() {
+	if (timer > 0) {
+		timer -= KB_TIMER_STEP;
+		return 0;
+	}
+	
+	if (!isMouse()) {
+		if(keyPressed(key)) {
+			timer = hitTimeout;
+			return evt;
+		}
+		return 0;
+	}
+	
+	switch(key) {
+	case KB_MOUSEL:
+		if (Mouse.ButtonL) {
+			timer = hitTimeout;
+			return evt;
+		}
+		break;
+	case KB_MOUSER:
+		if (Mouse.ButtonR) {
+			timer = hitTimeout;
+			return evt;
+		}
+		break;
+	}
+	
+	return 0;
+}
+
+class KeyBindings {
+	var kbs;
+	
+	OrEvents();
+	FirstEvent();
+};
+
+function KeyBindings::KeyBindings(kbs) { this.kbs = kbs; }
+
+function KeyBindings::OrEvents() {
+	var event = 0;
+	
+	foreach(var kb in kbs) {
+		event |= kb.Event();
+	}
+	
+	return event;
+}
+
+function  KeyBindings::FirstEvent() {
+	
+	foreach(var kb in kbs) {
+		var event = kb.Event();
+		if (event != 0) {
+			return event;
+		}
+	}
+	
+	return 0;
+}
+
+#endif

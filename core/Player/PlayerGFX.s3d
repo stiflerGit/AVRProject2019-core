@@ -23,17 +23,21 @@ class PlayerGFX : PlayerModel {
 	var hitFx;
 	var playStep, playJump, playHit;
 	
-	Unmarshall(data);
 	Init(col);
 	Draw();
 	SetPosition(pos);
 	SetRotation(angle);
 	Update(event);
+	//
+	Unmarshall(data);
 	
 	updateGFX(event);
 	addToCurrentFrameToNextFrame(fStep);
 };
 
+/**
+ * 
+ */
 function PlayerGFX::Unmarshall(data) {
 	var wasInTheAir = isInTheAir;
 	var oldHP = this.Hp;
@@ -58,20 +62,9 @@ function PlayerGFX::Unmarshall(data) {
 	}
 }
 
-function PlayerGFX::SetPosition(position)
-{
-	this.position = position;
-	obj.setposition(this.position);
-}
-
-function PlayerGFX::SetRotation(angle)
-{
-	this.angle = angle;
-	this.direction = [sin(angle), 0, cos(angle)];
-	obj.setrotation(angle*180.0/PI, 0, 1, 0);
-}
-
-
+/**
+ * 
+ */
 function PlayerGFX::Init(color) {	
 	
 	this.color = color;
@@ -104,19 +97,25 @@ function PlayerGFX::Init(color) {
 	frameStep = 1.0;
 	currentFrame = SWAT_START_WALK;
 	
-	SetRotation(this.angle);
-	SetPosition(this.position);
+	obj.setrotation(this.angle*180.0/PI, 0, 1, 0);
+	obj.setposition(this.position);
 	
 	playStep = false;
 	playJump = false;	
 	playHit = false;
 }
 
+/**
+ * 
+ */
 function PlayerGFX::Update(event) {
 	updateGFX(event);
 	PlayerModel::this.Update(event);
 }
 
+/**
+ * 
+ */
 function PlayerGFX::updateGFX(event) {
 	if (!isInTheAir) {
 		var fStep = 1;
@@ -136,11 +135,28 @@ function PlayerGFX::updateGFX(event) {
 	}
 }
 
-function PlayerGFX::Draw()
-{
-	SetRotation(angle);
-	SetPosition(position);
-	obj.draw(VR_FRAMENUMBER, currentFrame);
+/**
+ * 
+ */
+function PlayerGFX::Draw() {
+	
+	if (IsDead()) {
+		this.obj.Hide();
+		foreach (var bullet in shootedBullets) {
+			if (bullet != void) {
+				var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapon.radiusOfInfluence);
+				b.Init();
+				b.Draw();
+			}
+		}
+		return;
+	}
+	
+	this.obj.Unhide();
+	obj.SetRotation(angle*180.0/PI, 0, 1, 0);
+	obj.SetPosition(position);
+	obj.Draw(VR_FRAMENUMBER, currentFrame);
+	
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
 			var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapon.radiusOfInfluence);
@@ -148,6 +164,7 @@ function PlayerGFX::Draw()
 			b.Draw();
 		}
 	}
+	
 	if (playStep) {
 		stepFx.Play();
 		playStep = false;
@@ -163,6 +180,9 @@ function PlayerGFX::Draw()
 
 }
 
+/**
+ * 
+ */
 function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
 	currentFrame += fStep;
 	if (currentFrame > SWAT_END_WALK){
