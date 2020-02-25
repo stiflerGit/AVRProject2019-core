@@ -20,14 +20,15 @@
 #define PLAYER_VELOCITY 1.0
 
 // input events
-#define PLAYER_RUN 1
-#define PLAYER_LEFT 2
-#define PLAYER_RIGHT 4
-#define PLAYER_UP 8
-#define PLAYER_DOWN 16
-#define PLAYER_SHOOT 32
-#define PLAYER_RELOAD 64
-#define PLAYER_JUMP 128
+#define PLAYER_RUN 			1
+#define PLAYER_LEFT 		2
+#define PLAYER_RIGHT 		4
+#define PLAYER_UP 			8
+#define PLAYER_DOWN 		16
+#define PLAYER_SHOOT 		32
+#define PLAYER_RELOAD 		64
+#define PLAYER_JUMP 		128
+#define PLAYER_NEXTWEAPON	256
 
 class PlayerModel {
 	// parent
@@ -41,14 +42,15 @@ class PlayerModel {
 	var gravity;
 	var step;
 	//
-	var weapon;
+	var weapons;
+	var actualWeaponIdx;
 	var shootedBullets;
 	var nOwnedBullets;
 	var reloadTimeout;
 	var isInTheAir;
 	var hp;
 	
-	Restart(position, nOwnedBullets, hp, weapon);
+	Restart(position, nOwnedBullets, hp);
 	IsDead();
 	GetHeadPosition();
 	Update(event);
@@ -74,7 +76,7 @@ class PlayerModel {
 /**
  * 
  */
-function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp, weapon) {
+function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp) {
 	
 	this.level = level;
 	
@@ -103,16 +105,17 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	}
 	this.hp = hp;
 	
-	if (this.weapon == void) {
-		weapon = NewRailgunModel(this.ID);
-	}
-	this.weapon = weapon;
+	this.weapons = {
+		NewRailgunModel(this.ID),
+		NewRocketLauncherModel(this.ID)
+	};
 	
 	isInTheAir = false;
 	hVel = 0.0;
 	vVel = 0.0;
 	gravity = 0.0;
 	reloadTimeout = 0.0;
+	actualWeaponIdx = 0;
 	
 	shootedBullets = Array(0);
 }
@@ -120,7 +123,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 /**
  * 
  */
- function PlayerModel::Restart(position, nOwnedBullets, hp, weapon) {
+ function PlayerModel::Restart(position, nOwnedBullets, hp) {
 	
 	this.position = position;
 	
@@ -137,10 +140,9 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	}
 	this.hp = hp;
 	
-	if (weapon == void) {
-		weapon = NewRailgunModel(this.ID);
+	foreach(var weapon in weapons) {
+		weapon.Reload(weapon.MagazineSize);
 	}
-	this.weapon = weapon;
 	
 	isInTheAir = false;
 	hVel = 0.0;
@@ -240,10 +242,15 @@ function PlayerModel::Update(event) {
 	}
 		
 	if (isEventSet(event, PLAYER_SHOOT)) {
+		var weapon = weapons[actualWeaponIdx];
 		var bullet = weapon.Shoot(position, direction);
 		if (bullet != void) {
 			aadd(shootedBullets, bullet);
 		}
+	}
+	
+	if (isEventSet(event, PLAYER_NEXTWEAPON)) {
+		actualWeaponIdx = (actualWeaponIdx + 1) % len(weapons);
 	}
 	
 	var oldposition = position;
@@ -265,7 +272,7 @@ function PlayerModel::Update(event) {
     	gravity = 2.0 * PLAYER_JUMP_HEIGHT * (PLAYER_VELOCITY^2) / ((PLAYER_JUMP_LENGTH / 2.0)^2);
     }
 	
-	weapon.Update();
+	weapons[actualWeaponIdx].Update();
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet!= void) {
@@ -319,7 +326,8 @@ function PlayerModel::Marshall() {
 		{"reloadTimeout", reloadTimeout},
 		{"isInTheAir", isInTheAir},
 		{"hp", hp},
-		{"shootedBullets", bulletsData}
+		{"shootedBullets", bulletsData},
+		{"actualWeaponIdx", actualWeaponIdx}
 	};
 	
 	return data;
@@ -367,7 +375,7 @@ function PlayerModel::MarshallDelta(Data) {
 	if(len(deltaData) == 0) {
 		return void;
 	}
-		
+
 	return deltaData;
 }
 
@@ -408,6 +416,9 @@ function PlayerModel::Unmarshall(data) {
 			break;
 		case "hp":
 			this.hp = value;
+			break;
+		case "actualWeaponIdx":
+			this.actualWeaponIdx = value;
 			break;
 		case "shootedBullets":
 			UnmarshallShootedBullets(value);
@@ -508,6 +519,7 @@ function PlayerModel::MarshallShootedBulletsDelta(model) {
  * 
  */
 function PlayerModel::reload() {
+	var weapon = weapons[actualWeaponIdx];
 	
 	if (weapon.nbullets >= weapon.magazineSize){
 		return;

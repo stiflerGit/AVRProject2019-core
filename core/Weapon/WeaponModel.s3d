@@ -66,6 +66,9 @@ function WeaponModel::hasShoot() {
 	return nextShootTimeout > 0;
 }
 
+/**
+ * 
+ */
 function NewRocketLauncherModel(pid) {
 	
 	var w = WeaponModel(pid, 1.0, 5, 3, 3.0, 0.3);
@@ -74,6 +77,9 @@ function NewRocketLauncherModel(pid) {
 	return w;
 }
 
+/**
+ * 
+ */
 function NewRailGunModel(pid) {
 	
 	var w = WeaponModel(pid, 0.2, 1, 50, 1.5, 0.05);

@@ -3,6 +3,7 @@
 
 #define KB_MOUSEL 		"mousel"
 #define KB_MOUSER		"mouser"
+#define KB_MOUSEW		"mousewheel"
 #define KB_TIMER_STEP 	0.1
 
 class KeyBinding {
@@ -24,9 +25,11 @@ function KeyBinding::KeyBinding(key, evt, hitTimeout) {
 
 function KeyBinding::isMouse() {
 	if (valtype(key) != "S") {
-		return str(key) == KB_MOUSEL || str(key) == KB_MOUSER;	
+		return str(key) == KB_MOUSEL 
+			|| str(key) == KB_MOUSER 
+			|| str(key) == KB_MOUSEW;
 	}
-	return key == KB_MOUSEL || key == KB_MOUSER;
+	return key == KB_MOUSEL || key == KB_MOUSER || key == KB_MOUSEW;
 }
 
 function KeyBinding::Event() {
@@ -52,6 +55,12 @@ function KeyBinding::Event() {
 		break;
 	case KB_MOUSER:
 		if (Mouse.ButtonR) {
+			timer = hitTimeout;
+			return evt;
+		}
+		break;
+	case KB_MOUSEW:
+		if (Mouse.Wheel != 0) {
 			timer = hitTimeout;
 			return evt;
 		}

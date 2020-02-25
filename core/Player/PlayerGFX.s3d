@@ -9,6 +9,9 @@
 #define SWAT_START_WALK 16
 #define SWAT_END_WALK   48
 
+/**
+ * 
+ */
 class PlayerGFX : PlayerModel {
 	// graphics
 	var lowerObj;
@@ -17,6 +20,7 @@ class PlayerGFX : PlayerModel {
 	var currentFrame;
 	var frameStep;
 	var color;
+	var weaponToHide;
 	// sound
 	var stepFx;
 	var jumpFx;
@@ -38,33 +42,6 @@ class PlayerGFX : PlayerModel {
 /**
  * 
  */
-function PlayerGFX::Unmarshall(data) {
-	var wasInTheAir = isInTheAir;
-	var oldHP = this.Hp;
-	PlayerModel::this.Unmarshall(data);
-	
-	if (hVel != 0){
-		var fStep = 1;			
-		if (hVel > PLAYER_VELOCITY) {
-			fStep = 2;
-		} else if(hVel < 0) {
-			fStep = -1;
-		}
-		addToCurrentFrameToNextFrame(fStep);
-	}
-	
-	if (!wasInTheAir && vVel > 0) {
-		playJump = true;
-	}
-	
-	if (oldHp > this.Hp) {
-		playHit = true;
-	}
-}
-
-/**
- * 
- */
 function PlayerGFX::Init(color) {	
 	
 	this.color = color;
@@ -80,13 +57,16 @@ function PlayerGFX::Init(color) {
 	obj.addchild(upperObj);
 	obj.addchild(lowerObj);
 	
-	if (weapon.name == "railgun") {
-		weapon = NewRailgun(this.ID, scaling);	
-	} else {
-		weapon = NewRocketLauncher(this.ID, scaling);
-	}
+	weapons = {
+		NewRailgun(this.ID, scaling),
+		NewRocketLauncher(this.ID, scaling)
+	};
+	weaponToHide = -1;
 	
-	obj.addchild(weapon.obj);
+	foreach(var weapon in weapons) {
+		obj.addchild(weapon.obj);
+		weapon.obj.Hide();
+	}
 	
 	obj.ModulateMaterials(color);
 	// sound
@@ -133,6 +113,10 @@ function PlayerGFX::updateGFX(event) {
 			playJump = true;
 		}
 	}
+	
+	if(isEventSet(event, PLAYER_NEXTWEAPON)) {
+		weaponToHide = actualWeaponIdx;
+	}
 }
 
 /**
@@ -144,7 +128,7 @@ function PlayerGFX::Draw() {
 		this.obj.Hide();
 		foreach (var bullet in shootedBullets) {
 			if (bullet != void) {
-				var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapon.radiusOfInfluence);
+				var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapons[actualWeaponIdx].radiusOfInfluence);
 				b.Init();
 				b.Draw();
 			}
@@ -152,14 +136,22 @@ function PlayerGFX::Draw() {
 		return;
 	}
 	
+	if (weaponToHide >= 0) {
+		OutputLN("hiding weapon: ", weaponToHide);
+		weapons[weaponToHide].obj.Hide();
+		weaponToHide = -1;
+	}
+	
 	this.obj.Unhide();
+	this.weapons[actualWeaponIdx].obj.Unhide();
 	obj.SetRotation(angle*180.0/PI, 0, 1, 0);
 	obj.SetPosition(position);
 	obj.Draw(VR_FRAMENUMBER, currentFrame);
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
-			var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapon.radiusOfInfluence);
+			var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage,
+				weapons[actualWeaponIdx].radiusOfInfluence);
 			b.Init();
 			b.Draw();
 		}
@@ -191,6 +183,38 @@ function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
 	} else if(currentFrame < SWAT_START_WALK){
 		playStep = true;
 		currentFrame = SWAT_END_WALK;
+	}
+}
+
+/**
+ * 
+ */
+function PlayerGFX::Unmarshall(data) {
+	var wasInTheAir = isInTheAir;
+	var oldHP = this.Hp;
+	var oldWeaponIdx = this.ActualWeaponIdx;
+	PlayerModel::this.Unmarshall(data);
+	
+	if (hVel != 0){
+		var fStep = 1;			
+		if (hVel > PLAYER_VELOCITY) {
+			fStep = 2;
+		} else if(hVel < 0) {
+			fStep = -1;
+		}
+		addToCurrentFrameToNextFrame(fStep);
+	}
+	
+	if (oldWeaponIdx != actualWeaponIdx) {
+		weaponToHide = oldWeaponIdx;
+	}
+	
+	if (!wasInTheAir && vVel > 0) {
+		playJump = true;
+	}
+	
+	if (oldHp > this.Hp) {
+		playHit = true;
 	}
 }
 

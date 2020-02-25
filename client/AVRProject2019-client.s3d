@@ -47,8 +47,7 @@ function CameraFirstPerson();
 function CameraThirdPerson();
 function DrawGrid(col, size);
 
-function OnDownload()
-{
+function OnDownload() {
 	// TODO: download your resources here
 	// E.g.: FileDownload("resource.ext");
 	FileDownload("../XVRResources.zip");
@@ -132,6 +131,9 @@ function OnFrame() {
 	myPlayer.RemoveVoidBullets();
 }
 
+/**
+ * 
+ */
 function setAllPlayersModels(models) {
 	for(var i=0; i < len(models); i++) {
 		var model = models[i];
@@ -153,6 +155,9 @@ function setAllPlayersModels(models) {
 	}
 }
 
+/**
+ * 
+ */
 function receiveDataFromServer() {
 	var data = NetVarReceiveFromTCP(myCh);
 	OutputLN("receiveDataFromServer: ", data);
@@ -160,20 +165,36 @@ function receiveDataFromServer() {
 	
 }
 
+/**
+ * 
+ */
 function sendDataToServer(data){
 	NetVarSendToTCP(myCh, data);
 }
 
+/**
+ * 
+ */
 function DownloadReady(RequestID){}
 
+/**
+ * 
+ */
 function OnTimer(){}
 
-
+/**
+ * 
+ */
 function OnEvent(eventID, wparam, lparam){}
 
+/**
+ * 
+ */
 function OnError(){}
 
-
+/**
+ * 
+ */
 function OnExit() {
 	NetClose(myCh);
 }
@@ -215,7 +236,8 @@ function playerController() {
 		KeyBinding("s", PLAYER_DOWN, 0.0),
 		KeyBinding(VK_SPACE, PLAYER_JUMP, 0.0),
 		KeyBinding("r", PLAYER_RELOAD, 0.0),
-		KeyBinding(KB_MOUSEL, PLAYER_SHOOT, 0.0)
+		KeyBinding(KB_MOUSEL, PLAYER_SHOOT, 0.0),
+		KeyBinding(KB_MOUSEW, PLAYER_NEXTWEAPON, 0.0)
 	});
 	
 	return kbs.OrEvents();
