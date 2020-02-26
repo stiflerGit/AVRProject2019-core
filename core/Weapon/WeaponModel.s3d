@@ -13,19 +13,20 @@ class WeaponModel {
 	var Pid;	/**< int, id of the player owning this */
 
 	var name;				/**< name of the weapon */ 	
-	var attackInterval; 	/**< float, time between a shoot and another shoot  */ 
+	var shootInterval; 		/**< float, time between a shoot and another shoot  */
+	var shootTimeout;		/**< float, timeout for next shoot to be enabled */ 
 	var damagePoints; 		/**< int, base damage */
 	var magazineSize; 		/**< int, maximum no. bullets the weapon can have */ 
 	var nBullets; 			/**< int, no. bullets in the magazine */
 	var reloadInterval;		/**< float, time between a reload and the next one */
-	var nextShootTimeout;	/**< float, time between a shoot and the next one*/
+	var reloadTimeout;		/**< float, timeout for reload to be finish */
 	var radiusOfInfluence;	/**< float, radius of the shooted bullets */
 	
 	/**
 	 * WeaponModel Ctor
 	 * 
 	 * @param[in]	pid		int, player id
-	 * @param[in]	attackInterval	float, time between a shoot and the next one
+	 * @param[in]	shootInterval	float, time between a shoot and the next one
 	 * @param[in]	damagePoints	int, damage points with which the bullet is eventually fired
 	 * @param[in]	magazineSize	int, no. bullets the magazine can contain
 	 * @param[in]	reloadInterval	float, time to reload the weapon
@@ -33,7 +34,7 @@ class WeaponModel {
 	 * @return WeaponModel
 	 * 
 	 */
-	WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence);
+	WeaponModel(pid, shootInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence);
 	
 	/**
 	 * Reload the weapon
@@ -59,45 +60,78 @@ class WeaponModel {
 };
 
 //
-function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence) {
+function WeaponModel::WeaponModel(pid, shootInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence) {
 	this.pid = pid;
-	this.attackInterval = attackInterval;
+	this.shootInterval = shootInterval;
+	this.shootTimeout = 0.0;
 	this.damagePoints = damagePoints;
 	this.magazineSize = magazineSize;
 	this.nBullets = magazineSize;
 	this.reloadInterval = reloadInterval;
-	this.nextShootTimeout = 0.0;
+	this.reloadTimeout = 0.0;
 	this.radiusOfInfluence = radiusOfInfluence;
 }
 
 //
 function WeaponModel::Shoot(position, direction){
-	if (nextShootTimeout <= 0 && nBullets > 0) {
-		position += [0,1,0] + 1.0*direction;
-		var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
-		nextShootTimeout = attackInterval;
-		nBullets--;
-		return b;
+	if (shootTimeout > 0 || reloadTimeout > 0) {
+		return;
 	}
+	
+	if (nBullets <=0) {
+		return;
+	}
+	
+	position += [0,1,0] + 0.7 * direction;
+	var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
+	shootTimeout = shootInterval;
+	nBullets--;
+	
+	return b;
 }
 
 //
 function WeaponModel::Reload(nBul) {
+	
+	if (nBul == 0) {
+		return 0;
+	}
+	
+	if (reloadTimeout > 0) {
+		return nBul;
+	}
+	
 	var missing = magazineSize - nBullets;
+	if (missing == 0) {
+		return nBul;
+	}
+	
+	if(missing > 0 && nBul > 0) {
+		reloadTimeout = reloadInterval;
+	}
+	
 	if (nBul >= missing) {
 		nBul -= missing;
 		nBullets += missing; 
 	} else {
 		nBullets += Nbul;
-		Nbul = 0;
+		nbul = 0;
 	}
+	
 	return Nbul;
 }
 
 //
 function WeaponModel::Update(){
-	if (nextShootTimeout > 0) {
-		nextShootTimeout -= 0.01;
+	
+	if (shootTimeout > 0) {
+		OutputLn(shootTimeout);
+		shootTimeout -= 0.01;
+	}
+	
+	if (reloadTimeout > 0) {
+		OutputLn(reloadTimeout);
+		reloadTimeout -= 0.01;
 	}
 }
 
@@ -127,7 +161,7 @@ function NewRocketLauncherModel(pid) {
  */
 function NewRailGunModel(pid) {
 	
-	var w = WeaponModel(pid, 0.2, 1, 50, 1.5, 0.05);
+	var w = WeaponModel(pid, 0.2, 1, 50, 1.0, 0.05);
 	w.name = "railgun";
 	
 	return w;

@@ -59,15 +59,16 @@ function WeaponGFX::Init(meshPath, scaleFactor, shootSountPath, reloadSoundPath)
 
 //
 function WeaponGFX::Shoot(position, direction){
-	if (nextShootTimeout <= 0 && nBullets > 0) {
-		position += [0,1,0] + 1.0 * direction;
-		var b = BulletGFX(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
+	
+	var b = WeaponModel::this.Shoot(position, direction);
+	
+	if (b != void) {
+		b = BulletGFX(b.Pid, b.position, b.direction, b.speed, b.damage, b.radiusOfInfluence);
 		b.Init();
 		playShoot = true;
-		nextShootTimeout = attackInterval;
-		nBullets--;
-		return b;
 	}
+
+	return b;
 }
 
 //
@@ -119,7 +120,7 @@ function NewRocketLauncher(pid, scaleFactor) {
  */
 function NewRailGun(pid, scaleFactor) {
 	
-	var wGfx = WeaponGFX(pid, 0.2, 1, 50, 1.5, 0.05);
+	var wGfx = WeaponGFX(pid, 0.2, 1, 50, 1.0, 0.05);
 	wGfx.Init("railgun.aam", scaleFactor, "shoot.wav", "rocketLauncherReload.wav");
 	
 	return wGfx;
