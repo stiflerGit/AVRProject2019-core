@@ -14,12 +14,12 @@ class WeaponModel {
 
 	var name;				/**< name of the weapon */ 	
 	var shootInterval; 		/**< float, time between a shoot and another shoot  */
-	var shootTimeout;		/**< float, timeout for next shoot to be enabled */ 
+	var shootTimeout;		/**< float, timeout for next shoot to be enabled */
+	var reloadInterval;		/**< float, time between a reload and the next one */
+	var reloadTimeout;		/**< float, timeout for reload to be finish */ 
 	var damagePoints; 		/**< int, base damage */
 	var magazineSize; 		/**< int, maximum no. bullets the weapon can have */ 
 	var nBullets; 			/**< int, no. bullets in the magazine */
-	var reloadInterval;		/**< float, time between a reload and the next one */
-	var reloadTimeout;		/**< float, timeout for reload to be finish */
 	var radiusOfInfluence;	/**< float, radius of the shooted bullets */
 	
 	/**
