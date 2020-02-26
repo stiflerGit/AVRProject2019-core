@@ -3,19 +3,32 @@
 
 #include "../core/Player/PlayerModel.s3d"
 
-// TODO: put your global variables here
-#define CONF_SERVER_ADDRESS "localhost"
-#define CONF_SERVER_PORT 5555
+/**
+ * SERVER CONFIGURATION
+ */
+#define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
+#define CONF_SERVER_PORT 5555			/**< port of the server. */
+#define CONF_MAX_NPLAYERS 2				/**< max number of players. */
 
-// max number of players
-#define CONF_MAX_NPLAYERS 2
+/**
+ * Gloval variables
+ */
 
-var mylevel;
+var mylevel;	/**< Level Obj, main level */	
 
-var inputCh;
-var clients = Array(CONF_MAX_NPLAYERS);
-var freeIDs = Array(0);
+var listenCh;	/**< int, listen channel where clients first connects */
 
+var clients = Array(CONF_MAX_NPLAYERS);	/**< Array of Array = {ch, player} all clients array
+ 										 * ch	int, channel for communication purpose
+ 										 * player	PlayerModel Obj, player model of the client
+ 										 */
+var freeIDs = Array(0);	/**< int Array, free id to assign to new players */
+
+/**
+ * delete the first free id from freeIDS
+ * 
+ * @return int, first free id
+ */
 function delFirstFreeID() {
 	if (len(freeIDs)>0) {
 		var id = freeIDs[0];
@@ -24,29 +37,85 @@ function delFirstFreeID() {
 	}
 }
 
+/**
+ * add an id to freeIDS
+ * 
+ * @param[in]	ID	int, Id to add
+ */
 function addFreeID(ID) {
 	aadd(freeIDs, ID);
 }
 
-// net functions
+/** ##############################################################
+ *		FUNCTIONS TO COMMUNICATE WITH CLIENTS 
+ * ############################################################### */
+
+/* accept a new connection with a client
+ * 
+ * @return client channel, eventual error
+ */ 
 function acceptNewClient();
+
+/**
+ * Receive data from client channel
+ * 
+ * @return data received
+ */
 function receiveDataFromClient(clientCh);
+
+/**
+ * send data to a client
+ * 
+ * @param[in]	clientCh	int, channel to use for send
+ * @param[in]	data		generic var, data to send
+ */
 function sendDataToClient(clientCh, data);
+
+/**
+ * send data to all clients
+ * 
+ * @param[in]	data		generic var, data to send
+ */
 function sendDataToAllClients(data);
+
+/**
+ * send models of all players(player.Marshall) to all client
+ * 
+ */
 function sendAllModelsToAllClients();
 
+/**
+ * initialize a new client
+ */
 function initNewClient();
+
+/**
+ * close the connection with a disconnected client
+ */
 function clientClose(client);
 
-function checkBulletsCollision(pp);
+/**
+ * check collision between shooted bullets of a player and all other entities
+ * 
+ * Remove the bullets that collides(bullet = void)
+ * 
+ * @param[in]	pp	player whom to check bullets
+ */
+function processBulletsCollision(pp);
+
+/**
+ * return a x,y position of the level where there isn't a wall
+ * 
+ * @return	vector, xy free of wall position 
+ */
 function getRandomFreePosition();
 
+//
 function OnDownload() {
-	// TODO: download your resources here
-	// E.g.: FileDownload("resource.ext");
 	FileDownload("../XVRResources.zip");
 }
 
+//
 function OnInit(params) {
 	OutputLN("");
 	OutputLN("init server");
@@ -57,10 +126,10 @@ function OnInit(params) {
 	OutputLN("server level initialized");
 	
 	OutputLN("creating listen channel");
-	inputCh = NetCreateChannelTCP(CONF_SERVER_PORT, CONF_SERVER_ADDRESS);
-	if (inputCh == -1) {
+	listenCh = NetCreateChannelTCP(CONF_SERVER_PORT, CONF_SERVER_ADDRESS);
+	if (listenCh == -1) {
 		OutputLN("error NetCreateChannelTCP");
-		Quit(inputCh);
+		Quit(listenCh);
 	}
 	OutputLN("listen channel created");
 	
@@ -72,15 +141,13 @@ function OnInit(params) {
 
 }
 
-/**
- * 
- */
+//
 function OnFrame() {
 	var isDataReady;
 	var update = false;
 	
 	// check new player connection
-	isDataReady = NetDataReady(inputCh);
+	isDataReady = NetDataReady(listenCh);
 	if(isDataReady) {
 		OutputLN("new client connected");
 		var ret = initNewClient();
@@ -116,15 +183,13 @@ function OnFrame() {
 			data = 0;
 		}
 		
-		checkBulletsCollision(player);
+		processBulletsCollision(player);
 		player.Update(data);
 	}
 		
 }
 
-/**
- * 
- */
+//
 function OnTimer() {
 	static var oldplayerModels = Array(CONF_MAX_NPLAYERS);
 	static var c = 0;
@@ -170,10 +235,8 @@ function OnTimer() {
 	}
 }
 
-/**
- * 
- */
-function checkBulletsCollision(pp){
+//
+function processBulletsCollision(pp){
 	var bullets = pp.shootedBullets;
 	 
 	for (var i=0; i<len(bullets); i++) {
@@ -220,9 +283,7 @@ function checkBulletsCollision(pp){
 	}
 }
 
-/**
- * 
- */
+//
 function getRandomFreePosition() {
 	var maxVal = len(myLevel.freeIndexes);
 	var freeIndex = myLevel.freeIndexes[Rand(maxVal)];
@@ -231,15 +292,11 @@ function getRandomFreePosition() {
 	return pos;
 }
 
-/**
- * \brief accept a new connection with a client
- * 
- * \return client channel, eventual error
- */
+//
 function acceptNewClient(){
 	var clientCh = -1;
 	while(clientCh == -1){
-		clientCh = NetAcceptTCP(inputCh, VR_NO_BLOCKING);	
+		clientCh = NetAcceptTCP(listenCh, VR_NO_BLOCKING);	
 		if (clientCh == 0){
 			return {clientCh, "NetAcceptTCP: " + str(clientCh)};
 		}
@@ -247,29 +304,19 @@ function acceptNewClient(){
 	return {clientCh, void};
 }
 
-/**
- * \brief receive data from client channel
- * 
- * data is an array
- * 
- * \return data received
- */
-function receiveDataFromClient(inputCh) {
-	var data = NetVarReceiveFromTCP(inputCh);
+//
+function receiveDataFromClient(listenCh) {
+	var data = NetVarReceiveFromTCP(listenCh);
 	OutputLN("receiveDataFromClient: ", data);
 	return data;
 }
 
-/**
- * 
- */
+//
 function sendDataToClient(outputCh, data) {
 	NetVarSendToTCP(outputCh, data);
 }
 
-/**
- * 
- */
+//
 function sendDataToAllClients(data) {
 	foreach(var client in clients) {
 		if (client != void) {
@@ -279,9 +326,7 @@ function sendDataToAllClients(data) {
 	}
 }
 
-/**
- * 
- */
+//
 function sendAllModelsToAllClients() {
 	var playerModels = Array(CONF_MAX_NPLAYERS);
 	for (var i = 0; i < len(clients); i++) {
@@ -296,9 +341,7 @@ function sendAllModelsToAllClients() {
     sendDataToAllClients(playerModels);
 }
 
-/**
- * \brief 
- */
+//
 function initNewClient() {
 	var ret = acceptNewClient();
 	var clientCh = ret[0], err = ret[1];
@@ -316,6 +359,7 @@ function initNewClient() {
 	return {pid, void};
 }
 
+//
 function clientClose(id) {
 	var client = clients[id];
 	clients[id] = void;
@@ -325,20 +369,14 @@ function clientClose(id) {
 //	TODO: p.free???
 }
 
-//function DownloadReady(RequestID){}
 //
+function DownloadReady(RequestID){}
 
 //
-//function OnEvent(eventID, wparam, lparam){
-//	// TODO: put your events handling code here
-//}
+function OnEvent(eventID, wparam, lparam){}
+
 //
-//function OnError(){
-//	// TODO: put your errors handling code here
-//}
+function OnError(){}
+
 //
-//
-//function OnExit()
-//{
-//	// TODO: put your cleanup code here
-//}
+function OnExit() {}

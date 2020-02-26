@@ -6,42 +6,61 @@
 #include "../Weapon/WeaponGFX.s3d"
 #include "../Bullet/BulletGFX.s3d"
 
+/**
+ * internals 
+ */
 #define SWAT_START_WALK 16
 #define SWAT_END_WALK   48
 
 /**
- * 
+ * PlayerGFX add graphic propriety to PlayerModel
  */
 class PlayerGFX : PlayerModel {
 	// graphics
-	var lowerObj;
-	var upperObj;
-	var obj;
-	var currentFrame;
-	var frameStep;
-	var color;
-	var weaponToHide;
+	var lowerObj;		/**< CvmObj, obj with lower player mesh */
+	var upperObj;		/**< CvmObj, obj with upper player mesh */
+	var obj;			/**< CvmObj, obj of the player  */
+	var currentFrame;	/**< int, frame to draw */
+	var frameStep;		/**< int, step frame to sum when player moves */
+	var color;			/**< vector, rgb color of the player surface */
+	var weaponToHide;	/**< int, weapon index to hide at screen */
 	// sound
-	var stepFx;
-	var jumpFx;
-	var hitFx;
+	var stepFx;			/**< sound effect of walk step */
+	var jumpFx;			/**< sound effect of jump */
+	var hitFx;			/**< sound effect when hitted by a bullet */
 	var playStep, playJump, playHit;
+		/**< bool, if true the respective sound will be played on Draw call*/
 	
+	/**
+	 * Initialize all graphical objects
+	 * 
+	 * @param[in]	col	color of the mesh surface 
+	 */
 	Init(col);
+	
+	/**
+	 * Draw the actual state of the player 
+	 */
 	Draw();
-	SetPosition(pos);
-	SetRotation(angle);
+	
+	/**
+	 * Override
+	 */
 	Update(event);
-	//
+	
+	/**
+	 * Override
+	 */
 	Unmarshall(data);
 	
+	/**
+	 * private
+	 */
 	updateGFX(event);
 	addToCurrentFrameToNextFrame(fStep);
 };
 
-/**
- * 
- */
+//
 function PlayerGFX::Init(color) {	
 	
 	this.color = color;
@@ -85,43 +104,13 @@ function PlayerGFX::Init(color) {
 	playHit = false;
 }
 
-/**
- * 
- */
+//
 function PlayerGFX::Update(event) {
 	updateGFX(event);
 	PlayerModel::this.Update(event);
 }
 
-/**
- * 
- */
-function PlayerGFX::updateGFX(event) {
-	if (!isInTheAir) {
-		var fStep = 1;
-		if (isEventSet(event, PLAYER_RUN)) {
-			fStep = 2;
-		}
-		
-		if (isEventSet(event, PLAYER_UP)) {
-			AddToCurrentFrameToNextFrame(fStep);
-		} else if (isEventSet(event, PLAYER_DOWN)) {
-			AddToCurrentFrameToNextFrame(-fStep);
-		}
-		
-		if (isEventSet(event, PLAYER_JUMP)) {
-			playJump = true;
-		}
-	}
-	
-	if(isEventSet(event, PLAYER_NEXTWEAPON)) {
-		weaponToHide = actualWeaponIdx;
-	}
-}
-
-/**
- * 
- */
+//
 function PlayerGFX::Draw() {
 	
 	if (IsDead()) {
@@ -143,10 +132,13 @@ function PlayerGFX::Draw() {
 	}
 	
 	this.obj.Unhide();
-	this.weapons[actualWeaponIdx].obj.Unhide();
+	
 	obj.SetRotation(angle*180.0/PI, 0, 1, 0);
 	obj.SetPosition(position);
 	obj.Draw(VR_FRAMENUMBER, currentFrame);
+	
+	this.weapons[actualWeaponIdx].obj.Unhide();
+	this.weapons[actualWeaponIdx].Draw();
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
@@ -172,9 +164,7 @@ function PlayerGFX::Draw() {
 
 }
 
-/**
- * 
- */
+//
 function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
 	currentFrame += fStep;
 	if (currentFrame > SWAT_END_WALK){
@@ -186,9 +176,7 @@ function PlayerGFX::AddToCurrentFrameToNextFrame(fStep) {
 	}
 }
 
-/**
- * 
- */
+//
 function PlayerGFX::Unmarshall(data) {
 	var wasInTheAir = isInTheAir;
 	var oldHP = this.Hp;
@@ -215,6 +203,30 @@ function PlayerGFX::Unmarshall(data) {
 	
 	if (oldHp > this.Hp) {
 		playHit = true;
+	}
+}
+
+//
+function PlayerGFX::updateGFX(event) {
+	if (!isInTheAir) {
+		var fStep = 1;
+		if (isEventSet(event, PLAYER_RUN)) {
+			fStep = 2;
+		}
+		
+		if (isEventSet(event, PLAYER_UP)) {
+			AddToCurrentFrameToNextFrame(fStep);
+		} else if (isEventSet(event, PLAYER_DOWN)) {
+			AddToCurrentFrameToNextFrame(-fStep);
+		}
+		
+		if (isEventSet(event, PLAYER_JUMP)) {
+			playJump = true;
+		}
+	}
+	
+	if(isEventSet(event, PLAYER_NEXTWEAPON)) {
+		weaponToHide = actualWeaponIdx;
 	}
 }
 

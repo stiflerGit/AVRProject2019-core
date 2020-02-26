@@ -3,26 +3,62 @@
 
 #include "../Bullet/BulletModel.s3d"
 
+/**
+ * WeaponModel class represent a weapon
+ * 
+ * This class provide all methods to manage a weapon
+ * 
+ */
 class WeaponModel {
-	// playerID
-	var Pid;
-	// model
-	var name; // name of the weapon
-	var attackInterval; // seconds, time between a shoot and another shoot
-	var damagePoints; // base damage
-	var magazineSize; // maximum number of bullets the weapon can have
-	var nBullets; // no. bullets in the magazine
-	var reloadInterval; //
-	var nextShootTimeout;
-	var radiusOfInfluence;
+	var Pid;	/**< int, id of the player owning this */
+
+	var name;				/**< name of the weapon */ 	
+	var attackInterval; 	/**< float, time between a shoot and another shoot  */ 
+	var damagePoints; 		/**< int, base damage */
+	var magazineSize; 		/**< int, maximum no. bullets the weapon can have */ 
+	var nBullets; 			/**< int, no. bullets in the magazine */
+	var reloadInterval;		/**< float, time between a reload and the next one */
+	var nextShootTimeout;	/**< float, time between a shoot and the next one*/
+	var radiusOfInfluence;	/**< float, radius of the shooted bullets */
 	
+	/**
+	 * WeaponModel Ctor
+	 * 
+	 * @param[in]	pid		int, player id
+	 * @param[in]	attackInterval	float, time between a shoot and the next one
+	 * @param[in]	damagePoints	int, damage points with which the bullet is eventually fired
+	 * @param[in]	magazineSize	int, no. bullets the magazine can contain
+	 * @param[in]	reloadInterval	float, time to reload the weapon
+	 * @param[in]	radiusOfInfluence	float, diameter of the fired bullets
+	 * @return WeaponModel
+	 * 
+	 */
+	WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence);
+	
+	/**
+	 * Reload the weapon
+	 * 
+	 * @param[in]	n	number of bullets to reload
+	 * @return	no bullets remained (not reloaded)
+	 */
 	Reload(n);
-	Shoot(position, direction);
-	Update();
 	
-	hasShoot();
+	/**
+	 * Shoot a bullet
+	 * 
+	 * @param[in]	position	starting position of the bullet
+	 * @param[in]	direction	direction of the shooted bullet
+	 * @return	Bullet object, bullet just shooted
+	 */
+	Shoot(position, direction);
+	
+	/**
+	 * Update the state of the weapon
+	 */
+	Update();
 };
 
+//
 function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSize, reloadInterval, radiusOfInfluence) {
 	this.pid = pid;
 	this.attackInterval = attackInterval;
@@ -34,8 +70,9 @@ function WeaponModel::WeaponModel(pid, attackInterval, damagePoints, magazineSiz
 	this.radiusOfInfluence = radiusOfInfluence;
 }
 
+//
 function WeaponModel::Shoot(position, direction){
-	if (!hasShoot() && nBullets > 0) {
+	if (nextShootTimeout <= 0 && nBullets > 0) {
 		position += [0,1,0] + 1.0*direction;
 		var b = BulletModel(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
 		nextShootTimeout = attackInterval;
@@ -44,6 +81,7 @@ function WeaponModel::Shoot(position, direction){
 	}
 }
 
+//
 function WeaponModel::Reload(nBul) {
 	var missing = magazineSize - nBullets;
 	if (nBul >= missing) {
@@ -56,18 +94,20 @@ function WeaponModel::Reload(nBul) {
 	return Nbul;
 }
 
+//
 function WeaponModel::Update(){
-	if (hasShoot()) {
+	if (nextShootTimeout > 0) {
 		nextShootTimeout -= 0.01;
 	}
 }
 
-function WeaponModel::hasShoot() {
-	return nextShootTimeout > 0;
-}
-
 /**
+ * Create a RocketLauncher Weapon
  * 
+ * Really slow, but shoots strong and big bullets
+ * 
+ * @param[in]	pid		int, player id
+ * @return WeaponModel of a rocket launcher
  */
 function NewRocketLauncherModel(pid) {
 	
@@ -78,7 +118,12 @@ function NewRocketLauncherModel(pid) {
 }
 
 /**
+ * Create a RailGun Weapon
  * 
+ * really fast, but shoots weak and small bullets
+ * 
+ * @param[in]	pid		int, player id
+ * @return WeaponModel of a railgun
  */
 function NewRailGunModel(pid) {
 	

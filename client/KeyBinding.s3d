@@ -1,67 +1,97 @@
 #ifndef KEYBINDING_S3D
 #define KEYBINDING_S3D
 
-#define KB_MOUSEL 		"mousel"
-#define KB_MOUSER		"mouser"
-#define KB_MOUSEW		"mousewheel"
+/**
+ * constants representing Mouse Keys
+ */
+#define KB_MOUSEL_KEY 		"mousel"		/**< left mouse button key */
+#define KB_MOUSER_KEY		"mouser"		/**< right mouse button key */
+#define KB_MOUSEW_KEY		"mousewheel"	/**< mouse wheel key */
+
+/**
+ * internals
+ */
 #define KB_TIMER_STEP 	0.1
 
+/**
+ * KeyBinding class serve as key to event binding
+ */
 class KeyBinding {
-	var key;
-	var evt;
-	var hitTimeout;
-	var timer;
+	var key; 		/**< string or int, keyboard key or mouse button*/
+	var evt;		/**< int, event associated with the key */
+	var hitTimeout;	/**< float, timeout to start when the key is pressed */
+	var timeout;	/**< float, timeout counter, when > 0 the key is disabled */
 	
+	/**
+	 * Check if key has been pressed and eventually return the event
+	 * 
+	 * @return	evt if key was pressed(and it was enabled by the timeout), 0 otherwise 
+	 */
 	Event();
+	
+	/**
+	 * test if the key is a mouse button
+	 * 
+	 * @return true if the key is a mousebutton, false otherwise 
+	 */
 	isMouse();
 };
 
+/**
+ * KeyBinding Ctor
+ * 
+ * @param[in]	key		string or int, representing a keyboard key, defined KB_MOUSE const
+ * @param[in]	evt		int, event to return if key was pressed
+ * @param[in]	hitTimeout	float, timeout to start when the key is pressed
+ */
 function KeyBinding::KeyBinding(key, evt, hitTimeout) {
 	this.key = key;
 	this.evt = evt;
 	this.hitTimeout = hitTimeout;
-	this.timer = 0.0;
+	this.timeout = 0.0;
 }
 
+//
 function KeyBinding::isMouse() {
 	if (valtype(key) != "S") {
-		return str(key) == KB_MOUSEL 
-			|| str(key) == KB_MOUSER 
-			|| str(key) == KB_MOUSEW;
+		return str(key) == KB_MOUSEL_KEY 
+			|| str(key) == KB_MOUSER_KEY 
+			|| str(key) == KB_MOUSEW_KEY;
 	}
-	return key == KB_MOUSEL || key == KB_MOUSER || key == KB_MOUSEW;
+	return key == KB_MOUSEL_KEY || key == KB_MOUSER_KEY || key == KB_MOUSEW_KEY;
 }
 
+//
 function KeyBinding::Event() {
-	if (timer > 0) {
-		timer -= KB_TIMER_STEP;
+	if (timeout > 0) {
+		timeout -= KB_TIMER_STEP;
 		return 0;
 	}
 	
 	if (!isMouse()) {
 		if(keyPressed(key)) {
-			timer = hitTimeout;
+			timeout = hitTimeout;
 			return evt;
 		}
 		return 0;
 	}
 	
 	switch(key) {
-	case KB_MOUSEL:
+	case KB_MOUSEL_KEY:
 		if (Mouse.ButtonL) {
-			timer = hitTimeout;
+			timeout = hitTimeout;
 			return evt;
 		}
 		break;
-	case KB_MOUSER:
+	case KB_MOUSER_KEY:
 		if (Mouse.ButtonR) {
-			timer = hitTimeout;
+			timeout = hitTimeout;
 			return evt;
 		}
 		break;
-	case KB_MOUSEW:
+	case KB_MOUSEW_KEY:
 		if (Mouse.Wheel != 0) {
-			timer = hitTimeout;
+			timeout = hitTimeout;
 			return evt;
 		}
 		break;
@@ -70,15 +100,35 @@ function KeyBinding::Event() {
 	return 0;
 }
 
+/**
+ * KeyBindings class manage an Array of KeyBinding
+ */
 class KeyBindings {
-	var kbs;
+	var kbs; /**< KeyBinding Array */
 	
+	/**
+	 * Or events between them
+	 * 
+	 * @return int, bitmask of events
+	 */
 	OrEvents();
+	
+	/**
+	 * first event detected
+	 * 
+	 * @return int, first event detected between kbs  
+	 */
 	FirstEvent();
 };
 
+/**
+ * KeyBindings Ctor
+ * 
+ * @param[in]	kbs	KeyBinding Array
+ */
 function KeyBindings::KeyBindings(kbs) { this.kbs = kbs; }
 
+//
 function KeyBindings::OrEvents() {
 	var event = 0;
 	
@@ -89,6 +139,7 @@ function KeyBindings::OrEvents() {
 	return event;
 }
 
+//
 function  KeyBindings::FirstEvent() {
 	
 	foreach(var kb in kbs) {

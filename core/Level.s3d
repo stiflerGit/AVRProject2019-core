@@ -5,8 +5,7 @@
 
 var level_matrix;
 
-class level
-{
+class Level {
 	var wallMeshes;
 	var wallObjArray;
 	var floorMesh;

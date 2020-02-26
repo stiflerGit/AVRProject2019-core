@@ -2,7 +2,11 @@
 #define UTILS_S3D
 
 /**
+ * minimum between two numbers
  * 
+ * @param[in]	a	float, first term
+ * @param[in]	b	float, second term
+ * @return minimum between a and b 
  */
 function min(a, b) {
 	if (a<b) {
@@ -12,7 +16,11 @@ function min(a, b) {
 }
 
 /**
+ * maximum between two numbers
  * 
+ * @param[in]	a	float, first term
+ * @param[in]	b	float, second term
+ * @return maximum between a and b 
  */
 function max(a, b) {
 	if (a>b) {
@@ -22,7 +30,11 @@ function max(a, b) {
 }
 
 /**
+ * test if an event is set
  * 
+ * @param[in]	event, event in wich the event should be set
+ * @param[in]	maskEvent, event to test 
+ * @return	true if the event is set, false otherwise
  */
 function isEventSet(event, maskEvent) {
 	var res = event & maskevent;

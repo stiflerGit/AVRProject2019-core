@@ -1,15 +1,26 @@
 #ifndef BULLET_GFX_S3D
 #define BULLET_GFX_S3D
 
+/**
+ * BulletGFX class add graphic to bulletModel class
+ */
 class BulletGFX: BulletModel {
 
-	var mesh;
-	var obj;
+	var mesh;	/**< CVmNewMesh Ojb, mesh */
+	var obj;	/**< CVmObj Ojb, obj with the mesh linked */
 	
+	/**
+	 * Initialize the graphic object
+	 */
 	Init();
+	
+	/**
+	 * Draw the actual state of the bulletModel
+	 */
 	Draw();
 };
 
+//
 function BulletGFX::Init() {
 	var mesh = CVMNewMesh(VRP_SPHERE);
 	obj = CVmObj(mesh);
@@ -17,8 +28,8 @@ function BulletGFX::Init() {
 	obj.SetPosition(position);
 }
 
-function BulletGFX::Draw()
-{
+//
+function BulletGFX::Draw() {
 	obj.SetPosition(position);
 	obj.draw();
 }

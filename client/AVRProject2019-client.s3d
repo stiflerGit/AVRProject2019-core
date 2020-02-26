@@ -6,53 +6,110 @@
 #include "../core/Level.s3d"
 #include "KeyBinding.s3d"
 
-#define CONF_MULTIPLAYER true
-#define CONF_SERVER_ADDRESS "localhost"
-#define CONF_SERVER_PORT 5555
-#define CONF_MAX_NPLAYERS 2
+/**
+ * MULTIPLAYER CONFIGURATION
+ */
+#define CONF_MULTIPLAYER true			/**< enable or disable multiplayer*/
+#define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
+#define CONF_SERVER_PORT 5555			/**< port of the server. */
+#define CONF_MAX_NPLAYERS 2				/**< max number of players. */
+
+var myCh; /**< int, channel of communication with the server */
 
 /* Set global scene parameters */
 SET SCENE_FOV  = 60;
 SET SCENE_NEAR = 0.5;
 SET SCENE_FAR  = 1000;
 
-// TODO: put your global variables here
-var myCh; /**< channel of communication with the server */
-
 /* Camera globals */
-var Camera;
-var CamPos = [0.0, 5.0, 10.0]; 	// camera position
-var CamDir = [1.0, 0.0, 0.0];
+var Camera;	/**< CVmCamera Obj, current camera*/	
+
+var CamPos = [0.0, 5.0, 10.0]; 	/**< current camera position*/
+var CamDir = [1.0, 0.0, 0.0];	/**< current camera direction */
 
 /* Light globals */
 var Light0;
-var PosL = [16.0, 16.0, 16.0];	// default light position
+var PosL = [16.0, 16.0, 16.0];	/**< default light position */
 
-var mylevel;
+/**
+ * logic globals
+ */
+var mylevel;	/**< Level Obj, main level */
 
 var myID; /**< playerID, used also to access to the players array */
-var players = Array(CONF_MAX_NPLAYERS); /**< players */
 
+var players = Array(CONF_MAX_NPLAYERS); /**< PlayerGFX Array, all players */
+
+/** ##############################################################
+ *		FUNCTIONS TO COMMUNICATE WITH SERVER 
+ * ############################################################### */
+
+/**
+ * receive data from server
+ * 
+ * @return generic variable that depends on context 
+ */
 function receiveDataFromServer();
+
+/**
+ * send data to server
+ * 
+ * @param[in] data	generic variable that depends on context 
+ */
 function sendDataToServer(data);
 
+/**
+ * given a variable that represent all players, set all locally player model
+ * 
+ * @param[in]	data with data of all players
+ */
 function setAllPlayersModels(data);
 
-/* Function declarations */
+/** ##############################################################
+ *		FUNCTIONS 
+ * ############################################################### */
+
+/**
+ * Manage the keys that trigger the game events (restart game when dead)
+ */
 function gameController();
+
+/**
+ * Manage the keys that trigger the player events
+ */
 function playerController();
+
+/**
+ * Manage the events that change the camera behaviour
+ */
 function cameraController();
+
+/**
+ * Move the camera to follow the player
+ */
 function CameraFollowPlayer();
+
+/**
+ * Move the camera as it was the player view
+ */
 function CameraFirstPerson();
-function CameraThirdPerson();
+
+/**
+ * Draw a grid on the ground
+ * 
+ * @param[in]	col		vector, color of the grid
+ * @param[in]	size	
+ */
 function DrawGrid(col, size);
 
+//
 function OnDownload() {
 	// TODO: download your resources here
 	// E.g.: FileDownload("resource.ext");
 	FileDownload("../XVRResources.zip");
 }
 
+//
 function OnInit(params) {
 	Camera = CameraGetCurrent();
 
@@ -92,6 +149,7 @@ function OnInit(params) {
 	players[myID] = myPlayer;
 }
 
+//
 function OnFrame() {
 		
 	if(CONF_MULTIPLAYER) {
@@ -131,9 +189,7 @@ function OnFrame() {
 	myPlayer.RemoveVoidBullets();
 }
 
-/**
- * 
- */
+//
 function setAllPlayersModels(models) {
 	for(var i=0; i < len(models); i++) {
 		var model = models[i];
@@ -155,9 +211,7 @@ function setAllPlayersModels(models) {
 	}
 }
 
-/**
- * 
- */
+//
 function receiveDataFromServer() {
 	var data = NetVarReceiveFromTCP(myCh);
 	OutputLN("receiveDataFromServer: ", data);
@@ -165,43 +219,29 @@ function receiveDataFromServer() {
 	
 }
 
-/**
- * 
- */
+//
 function sendDataToServer(data){
 	NetVarSendToTCP(myCh, data);
 }
 
-/**
- * 
- */
+//
 function DownloadReady(RequestID){}
 
-/**
- * 
- */
+//
 function OnTimer(){}
 
-/**
- * 
- */
+//
 function OnEvent(eventID, wparam, lparam){}
 
-/**
- * 
- */
+//
 function OnError(){}
 
-/**
- * 
- */
+//
 function OnExit() {
 	NetClose(myCh);
 }
 
-/**
- * 
- */
+//
  function gameController() {
  	static var kbs = KeyBindings({
  		KeyBinding(VK_F1, 1, 3.0)
@@ -224,9 +264,7 @@ function OnExit() {
  	}
  }
  
-/**
- * 
- */
+//
 function playerController() {
 	static var kbs = KeyBindings({
 		KeyBinding(VK_SHIFT, PLAYER_RUN, 0.0),
@@ -236,16 +274,14 @@ function playerController() {
 		KeyBinding("s", PLAYER_DOWN, 0.0),
 		KeyBinding(VK_SPACE, PLAYER_JUMP, 0.0),
 		KeyBinding("r", PLAYER_RELOAD, 0.0),
-		KeyBinding(KB_MOUSEL, PLAYER_SHOOT, 0.0),
-		KeyBinding(KB_MOUSEW, PLAYER_NEXTWEAPON, 0.0)
+		KeyBinding(KB_MOUSEL_KEY, PLAYER_SHOOT, 0.0),
+		KeyBinding(KB_MOUSEW_KEY, PLAYER_NEXTWEAPON, 0.0)
 	});
 	
 	return kbs.OrEvents();
 }
 
-/**
- * 
- */
+//
 function cameraController() {
 	static var cameraFunc = 0;
 	static var kbs = KeyBinding(VK_F5, 1, 2.0);
@@ -268,9 +304,7 @@ function cameraController() {
 	}
 }
 
-/**
- * 
- */
+//
 function CameraFirstPerson() {
 	var myplayer = players[myID];
 	var headPos;
@@ -288,9 +322,7 @@ function CameraFirstPerson() {
 	}
 }
 
-/**
- * 
- */
+//
 function CameraFollowPlayer() {
 	var myplayer = players[myID];
 	var playerPosition = myplayer.GetHeadPosition();
@@ -306,11 +338,8 @@ function CameraFollowPlayer() {
 	Camera.SetTarget(playerPosition);
 }
 
-/**
- * 
- */
-function DrawGrid(col, size)
-{
+//
+function DrawGrid(col, size) {
 	/* let's not mess up current OpenGL status */
 	glPushAttrib(GL_LIGHTING_BIT | GL_LINE_BIT | GL_CURRENT_BIT);
 	

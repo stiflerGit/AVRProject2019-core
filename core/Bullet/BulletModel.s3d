@@ -1,26 +1,71 @@
 #ifndef BULLET_MODEL_S3D
 #define BULLET_MODEL_S3D
 
-#define BULLET_DEFAULT_SPEED 0.2
+/**
+ * internal defaults
+ */
+#define BULLET_DEFAULT_SPEED 0.2 /**< speed of the bullet */
 
+/**
+ * BulletModel class represent a bullet
+ * 
+ * This class provide all methods to manage a bullet
+ * 
+ */
 class BulletModel {
-	// playerID
-	var Pid;
-	// model
-	var position;
-	var direction;
-	var speed;
-	var damage;
-	var radiusOfInfluence;
+	var Pid; /**< int, id of the player owning this */
 	
+	var position; 	/**< vector, space position  */
+	var direction;	/**< vector, going direction */
+	var speed;		/**< float, moving speed  */
+	var damage;		/**< int, damage points, subtracted to a 
+					 *	player hp when it collides with him */
+					 
+	var radiusOfInfluence; /**< float, radius of the bullet */
+	
+	
+	/**
+	 * BulletModel Ctor
+	 * 
+	 * @param[in]	pid		int, player id
+	 * @param[in]	position	float vector, space position
+	 * @param[in]	direction	float vector, going direction
+	 * @param[in]	speed		float, modulus of the speed
+	 * @param[in]	damage		float, damage point
+	 * @param[in]	radiusOfInfluence	float, radius of the bullet
+	 * @return	BulletModel
+	 * 		
+	 */
+	BulletModel(pid, position, direction, speed, damage, radiusOfInfluence);
+	
+	/**
+	 * Update state (position, direction and speed are constants for now)
+	 */
+	Update();
+	
+	/**
+	 * Check if is colliding with a point
+	 * 
+	 * @return	true if it is colliding, false otherwise
+	 */
+	IsCollidingWithPoint(point);
+	
+	/**
+	 * Check if is colliding with a sphere
+	 * 
+	 * @return	true if it is colliding, false otherwise
+	 */
+	IsCollidingWithSphere(center, radius);
+	
+	/**
+	 * Marshall and Unmarshall functions to comunicate with server 
+	 */
 	Marshall();
 	MarshallDelta(model);
 	Unmarshall(model);
-	Update();
-	IsCollidingWithPoint(point);
-	IsCollidingWithSphere(center, radius);
 };
 
+//
 function BulletModel::BulletModel(pid, position, direction, speed, damage, radiusOfInfluence) {
 	
 	this.pid = pid;
@@ -39,6 +84,33 @@ function BulletModel::BulletModel(pid, position, direction, speed, damage, radiu
 	this.radiusOfInfluence = radiusOfInfluence;
 }
 
+//
+function BulletModel::Update() {
+	position += direction*speed;
+}
+
+//
+function BulletModel::IsCollidingWithPoint(point) {
+	var delta = point - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence) {
+		return true;
+	}
+	return false;
+}
+
+function BulletModel::IsCollidingWithSphere(center, radius) {
+	var delta = center - this.position;
+	var mod = modulus(delta);
+	
+	if (mod <= radiusOfInfluence + radius) {
+		return true;
+	}
+	return false; 
+}
+
+//
 function BulletModel::Marshall() {
 	return {
 		{ "Pid", Pid},
@@ -49,6 +121,7 @@ function BulletModel::Marshall() {
 	};
 }
 
+//
 function BulletModel::MarshallDelta(model) {
 	var myModel = this.Marshall();
 	
@@ -85,6 +158,7 @@ function BulletModel::MarshallDelta(model) {
 	return deltaModel;
 }
 
+//
 function BulletModel::Unmarshall(model){
 	
 	if (len(model) == 0) {
@@ -112,30 +186,6 @@ function BulletModel::Unmarshall(model){
 			break;
 		}
 	}
-}
-
-function BulletModel::Update() {
-	position += direction*speed;
-}
-
-function BulletModel::IsCollidingWithPoint(point) {
-	var delta = point - this.position;
-	var mod = modulus(delta);
-	
-	if (mod <= radiusOfInfluence) {
-		return true;
-	}
-	return false;
-}
-
-function BulletModel::IsCollidingWithSphere(center, radius) {
-	var delta = center - this.position;
-	var mod = modulus(delta);
-	
-	if (mod <= radiusOfInfluence + radius) {
-		return true;
-	}
-	return false; 
 }
 
 #endif

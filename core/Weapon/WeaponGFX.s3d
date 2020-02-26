@@ -3,24 +3,47 @@
 
 #include "../Bullet/BulletGFX.s3d"
 
+/**
+ * WeaponGFX add graphic to WeaponModel
+ */
 class WeaponGFX: WeaponModel {
-	// graphic
-	var mesh;
-	var obj;
-	// sound
-	var shootFx;
-	var reloadFx;
+	var mesh;	/**< CVmNewMesh, mesh */
+	var obj;	/**< CvmObj, graphic object  */
 	
-	var playReload;
+	var shootFx;	/**< sound effect of the shoot */
+	var reloadFx;	/**< sound effect of the reload */
+	var playReload, playShoot;	/**< bool, if true reproduce reload sound when Draw is called */
 	
-	Init(meshPath, scaleFactor, soundPath, reloadSoundPath);
+	/**
+	 * Initialize all graphical objects
+	 * 
+	 * @param[in]	meshPath		path of the aam mesh file
+	 * @param[in]	scaleFactor 	scale factor
+	 * @param[in]	shootSoundPath	path of the wav audio shoot file 
+	 * @param[in]	reloadSoundPath	path of the wav audio reload file
+	 *   
+	 */
+	Init(meshPath, scaleFactor, shootSoundPath, reloadSoundPath);
+	
+	/**
+	 * Override 
+	 */
 	Shoot(position, direction);
-	Draw(); //
+	
+	/**
+	 * Draw the actual state of the weapon 
+	 */
+	Draw();
+	
+	/**
+	 * Override
+	 */
 	Reload(nBul);
 	
 	hasShoot();
 };
 
+//
 function WeaponGFX::Init(meshPath, scaleFactor, shootSountPath, reloadSoundPath) {
 	
 	mesh = CVMNewMesh(meshPath);
@@ -31,32 +54,52 @@ function WeaponGFX::Init(meshPath, scaleFactor, shootSountPath, reloadSoundPath)
 	reloadFx = CVmVRAWAV(reloadSoundPath);
 	
 	playReload = false;
+	playShoot = false;
 }
 
+//
 function WeaponGFX::Shoot(position, direction){
-	if (!hasShoot() && nBullets > 0) {
-		position += [0,1,0] + 1.0*direction;
+	if (nextShootTimeout <= 0 && nBullets > 0) {
+		position += [0,1,0] + 1.0 * direction;
 		var b = BulletGFX(this.Pid, position, direction, BULLET_DEFAULT_SPEED, damagePoints, radiusOfInfluence);
 		b.Init();
-		shootFx.play();
+		playShoot = true;
 		nextShootTimeout = attackInterval;
 		nBullets--;
 		return b;
 	}
 }
 
+//
 function WeaponGFX::Reload(nBul) {
 	var ret = WeaponModel::this.Reload(nBul);
 	if (ret > 0) {
-//		playReload = true;
-		reloadFx.Play();
+		playReload = true;
 	}
 	return ret;
 }
 
+//
 function WeaponGFX::Draw() {
+	if (playReload) {
+		reloadFx.Play();
+		playReload = false;
+	}
+	if (playShoot) {
+		shootFx.play();
+		playShoot = false;
+	}
 }
 
+/**
+ * Create a graphic RocketLauncher Weapon
+ * 
+ * Really slow, but shoots strong and big bullets
+ * 
+ * @param[in]	pid		int, player id
+ * @param[in]	scalefactor	float, scale factor of the mesh
+ * @return WeaponGFX of a rocket launcher
+ */
 function NewRocketLauncher(pid, scaleFactor) {
 	
 	var wGfx = WeaponGFX(pid, 1.0, 5, 3, 3.0, 0.3);
@@ -65,6 +108,15 @@ function NewRocketLauncher(pid, scaleFactor) {
 	return wGfx;
 }
 
+/**
+ * Create a graphic RailGun Weapon
+ * 
+ * really fast, but shoots weak and small bullets
+ * 
+ * @param[in]	pid		int, player id
+ * @param[in]	scalefactor	float, scale factor of the mesh
+ * @return WeaponGFX of a railgun
+ */
 function NewRailGun(pid, scaleFactor) {
 	
 	var wGfx = WeaponGFX(pid, 0.2, 1, 50, 1.5, 0.05);

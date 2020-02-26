@@ -6,64 +6,132 @@
 #include "../Weapon/WeaponModel.s3d"
 #include "../Bullet/BulletModel.s3d"
 
-// defaults
-#define PLAYER_DEFAULT_HP 10
-#define PLAYER_DEFAULT_ANGLE 0
-#define PLAYER_DEFAULT_NOWNBULLETS 9999
-#define PLAYER_DEFAULT_STEP 0.1
+/**
+ * default constants, used in the player constructor 
+ * if the corresponding variable is void
+ */
+#define PLAYER_DEFAULT_HP 100			/**< health points*/
+#define PLAYER_DEFAULT_ANGLE 0			/**< starting angle */
+#define PLAYER_DEFAULT_NOWNBULLETS 9999	/**< no bullets owned */
+#define PLAYER_DEFAULT_STEP 0.1			/**< time step for the simulation */
 
-#define PLAYER_DEFAULT_PPPOSITION_ACCURACY 3 /**< post process postion accuracy */
+/**
+ * internal defaults
+ */
+#define PLAYER_DEFAULT_PPPOSITION_ACCURACY 3	/**< default post process postion accuracy */
+#define PLAYER_JUMP_HEIGHT 1.1					/**< height of the jump when not running */
+#define PLAYER_JUMP_LENGTH 3					/**< lenght of the jump when not running*/
+#define PLAYER_VELOCITY 1.0						/**< moving velocity when not running*/
 
-// physics
-#define PLAYER_JUMP_HEIGHT 1.1
-#define PLAYER_JUMP_LENGTH 3
-#define PLAYER_VELOCITY 1.0
+/**
+ * input events for the PlayerModel.Update()
+ */
+#define PLAYER_RUN 			1	/**< move faster if moving */
+#define PLAYER_LEFT 		2	/**< rotate left*/
+#define PLAYER_RIGHT 		4	/**< rotate right*/
+#define PLAYER_UP 			8	/**< go straight*/
+#define PLAYER_DOWN 		16	/**< go ahead */
+#define PLAYER_SHOOT 		32	/**< shoot with the current weapon */
+#define PLAYER_RELOAD 		64	/**< reload the current weapon */
+#define PLAYER_JUMP 		128	/**< jump */
+#define PLAYER_NEXTWEAPON	256	/**< switch to next weapon held */
 
-// input events
-#define PLAYER_RUN 			1
-#define PLAYER_LEFT 		2
-#define PLAYER_RIGHT 		4
-#define PLAYER_UP 			8
-#define PLAYER_DOWN 		16
-#define PLAYER_SHOOT 		32
-#define PLAYER_RELOAD 		64
-#define PLAYER_JUMP 		128
-#define PLAYER_NEXTWEAPON	256
-
+/**
+ * PlayerModel class represent a player
+ * 
+ * This class provide all methods to manage the player
+ * 
+ */
 class PlayerModel {
 	// parent
-	var level;
+	var level;	/**< class, level where the player resides */
 	//
-	var ID;
-	var position;
-	var angle;
-	var direction;
+	var ID;			/**< int, unique Id of the player */
+	var position;	/**< vector, position of the player */
+	var angle;		/**< float, rotation angle wrt Y world axids*/
+	var direction;	/**< vector, going direction */
 	var hVel, vVel; /**< horizontal and vertical velocity */
-	var gravity;
-	var step;
+	var gravity;	/**< float, gravity for jump or falling */
+	var step;		/**< float, time step used for simulation */
 	//
-	var weapons;
-	var actualWeaponIdx;
-	var shootedBullets;
-	var nOwnedBullets;
-	var reloadTimeout;
-	var isInTheAir;
-	var hp;
+	var weapons;			/**< WeaponModel Array, weapons held */
+	var actualWeaponIdx;	/**< int, index of the weapon actually used */
+	var shootedBullets;		/**< BulletModel Array, bullet shooted by the player */
+	var nOwnedBullets;		/**< int, no. held bullets */
+	var reloadTimeout;		/**< float, timeout that start after a reload for the next reload */
+	var isInTheAir;			/**< bool, true when player is in the air */
+	var hp;					/**< int, health point */
 	
+	/*
+	 * PlayerModel Ctor
+	 * 
+	 * @param[in]	level	Level Obj, level in which the player resides
+	 * @param[in]	ID	int, id 
+	 * @param[in]	position	float vector, space position
+	 * @param[in]	angle		float, angle with respect to y axis
+	 * @param[in]	step	float, time step for simulation
+	 * @param[in] 	nOwnedBullets	int, no bullets owned
+	 * @param[in]	hp	int, health points
+	 */
+	PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp);
+	 
+	/**
+	 * Restart when player is dead
+	 * 
+	 * @param[in]	position	float vector, space position
+	 * @param[in]	nOwnedBullets	int, no bullet with which the player will restart
+	 * @param[in]	hp	int, health points 
+	 */
 	Restart(position, nOwnedBullets, hp);
+	
+	/**
+	 * test function for player health state
+	 * 
+	 * @return bool, true if the player is dead, false otherwise
+	 */
 	IsDead();
+	
+	/**
+	 * Get the position of the player's head
+	 * 
+	 * @return vector, position of the head 
+	 */
 	GetHeadPosition();
+	
+	/**
+	 * Update the state of the player by means of events (such as a FSM)
+	 * 
+	 * @param[in] event int, bitmask of events
+	 */
 	Update(event);
+	
+	/**
+	 * Remove void bullets in the shootedBullets array
+	 */
 	RemoveVoidBullets();
+	
+	/**
+	 * Test if the player is colliding with a given bullet
+	 * 
+	 * @param[in]	bullet	bulletModel class, bullet to test
+	 * @return	bool, true if the player collides with the given bullet,
+	 * 				false otherwise.  
+	 */
 	IsCollidingWithBullet(bullet);
-	//
+	
+	/**
+	 * Marshall and Unmarshall functions to comunicate with server 
+	 */
 	Marshall();
 	MarshallDelta(model);
 	Unmarshall(model);
 	UnmarshallShootedBullets(model);
 	MarshallShootedBullets();
 	MarshallShootedBulletsDelta(model);
-	//
+	
+	/**
+	 * private use only functions
+	 */
 	reload();
 	isReloading();
 	isPathCollidingWithWall(oldposition, position);
@@ -73,9 +141,7 @@ class PlayerModel {
 	postProcessIsInTheAir();
 };
 
-/**
- * 
- */
+//
 function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullets, hp) {
 	
 	this.level = level;
@@ -120,9 +186,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	shootedBullets = Array(0);
 }
 
-/**
- * 
- */
+//
  function PlayerModel::Restart(position, nOwnedBullets, hp) {
 	
 	this.position = position;
@@ -151,9 +215,7 @@ function PlayerModel::PlayerModel(level, ID, position, angle, step, nOwnedBullet
 	reloadTimeout = 0.0;
 }
 
-/**
- * 
- */
+//
 function PlayerModel::IsDead() {
 	if (this.Hp <= 0) {
 		return true;
@@ -161,9 +223,7 @@ function PlayerModel::IsDead() {
 	return false;
 } 
  
-/**
- * 
- */
+//
 function PlayerModel::RemoveVoidBullets() {
 	// remove deleted bullets
 	for(var i=0; i<len(shootedBullets);){
@@ -175,18 +235,14 @@ function PlayerModel::RemoveVoidBullets() {
 	}
 }
 
-/**
- * 
- */
+//
 function PlayerModel::GetHeadPosition() {
 	var headPosition = this.position + (0.3) * this.direction;
 	headPosition.y = headPosition.y + 1.5;
 	return (headPosition);
 }
 
-/**
- * 
- */
+//
 function PlayerModel::Update(event) {
 	
 	if (IsDead()) {
@@ -282,9 +338,7 @@ function PlayerModel::Update(event) {
 	
 }
 
-/**
- * 
- */
+//
 function PlayerModel::IsCollidingWithBullet(bullet) {
 	if (IsDead()) {
 		return false;
@@ -308,9 +362,7 @@ function PlayerModel::IsCollidingWithBullet(bullet) {
   	return false;
 }
  
-/**
- * 
- */
+//
 function PlayerModel::Marshall() {
 	
 	var bulletsData = MarshallShootedBullets();
@@ -333,9 +385,7 @@ function PlayerModel::Marshall() {
 	return data;
 }
 
-/**
- * Wath do you have to apply to model to a player to be equal to me?
- */
+// 
 function PlayerModel::MarshallDelta(Data) {
 	var myData = this.Marshall();
 	
@@ -379,9 +429,7 @@ function PlayerModel::MarshallDelta(Data) {
 	return deltaData;
 }
 
-/**
- * 
- */
+//
 function PlayerModel::Unmarshall(data) {
 	foreach(var field in data) {
 		var key = field[0], value = field[1];
@@ -430,9 +478,7 @@ function PlayerModel::Unmarshall(data) {
 	}
 }
 
-/**
- * 
- */
+//
 function PlayerModel::UnmarshallShootedBullets(Data) {
 	if(Data == void || len(Data) == 0) {
 		return;
@@ -460,9 +506,7 @@ function PlayerModel::UnmarshallShootedBullets(Data) {
 	
 }
 
-/**
- * 
- */
+//
 function PlayerModel::MarshallShootedBullets() {
 	var bulletModels = Array(0);
 	foreach (var bullet in shootedBullets) {
@@ -480,9 +524,7 @@ function PlayerModel::MarshallShootedBullets() {
 	return bulletModels;
 }
 
-/**
- * 
- */
+//
 function PlayerModel::MarshallShootedBulletsDelta(model) { 
 		
 	if(model == void || len(model) == 0) {
@@ -649,6 +691,5 @@ function PlayerModel::postProcessIsInTheAir() {
 	
 	return false;
 }
-
 
 #endif
