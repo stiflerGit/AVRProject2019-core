@@ -4,7 +4,7 @@
 /**
  * internal defaults
  */
-#define BULLET_DEFAULT_SPEED 0.2 /**< speed of the bullet */
+#define BULLET_DEFAULT_SPEED 0.2 /**< speed */
 
 /**
  * BulletModel class represent a bullet

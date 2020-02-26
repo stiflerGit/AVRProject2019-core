@@ -117,9 +117,7 @@ function PlayerGFX::Draw() {
 		this.obj.Hide();
 		foreach (var bullet in shootedBullets) {
 			if (bullet != void) {
-				var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage, weapons[actualWeaponIdx].radiusOfInfluence);
-				b.Init();
-				b.Draw();
+				bullet.Draw();
 			}
 		}
 		return;
@@ -142,10 +140,7 @@ function PlayerGFX::Draw() {
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
-			var b = BulletGFX(ID, bullet.position, bullet.direction, bullet.speed, bullet.damage,
-				weapons[actualWeaponIdx].radiusOfInfluence);
-			b.Init();
-			b.Draw();
+			bullet.Draw();
 		}
 	}
 	
