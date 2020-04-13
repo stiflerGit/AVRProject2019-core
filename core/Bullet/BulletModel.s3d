@@ -100,6 +100,7 @@ function BulletModel::IsCollidingWithPoint(point) {
 	return false;
 }
 
+//
 function BulletModel::IsCollidingWithSphere(center, radius) {
 	var delta = center - this.position;
 	var mod = modulus(delta);
@@ -117,7 +118,8 @@ function BulletModel::Marshall() {
 		{ "position", position},
 		{ "direction", direction},
 		{ "speed", speed},
-		{ "damage", damage}
+		{ "damage", damage},
+		{ "rof", radiusOfInfluence}
 	};
 }
 
@@ -176,14 +178,17 @@ function BulletModel::Unmarshall(model){
 			this.position = value;
 			break;
 		case "direction":
-			this.direction = direction;
+			this.direction = value;
 			break;
 		case "speed":
-			this.speed = speed;
+			this.speed = value;
 			break;
 		case "damage":
-			this.damage = damage;
+			this.damage = value;
 			break;
+		case "rof":
+			this.radiusOfInfluence = value;
+			break; 
 		}
 	}
 }

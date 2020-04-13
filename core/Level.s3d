@@ -22,8 +22,7 @@ class Level {
 };
 
 
-function level::init(level_textfile)
-{
+function level::init(levelTextFile) {
 	wallTexture = CVmTexture("mattoni03.png");
 	wallMaterial = CVmMaterial();
 	wallMaterial.SetTexture(wallTexture);
@@ -33,12 +32,12 @@ function level::init(level_textfile)
 	
 	wallObjArray = array(0);
 	wallMeshes = Array(3);
-	var f = LoadFile(level_textfile);
+	var f = LoadFile(levelTextFile);
 	trace(f);
 	var numRows = len(f);
 	var numColumns = len(f[0]);
 	level_matrix = array(numRows);
-	trace(numRows,numColumns);
+	trace(numRows, numColumns);
 	for(var i=0; i< numRows; i++)
 	{
 		level_matrix[i] = array(numColumns);
@@ -80,15 +79,16 @@ function level::init(level_textfile)
 	skyMesh.Translate(numColumns/2, 0, numRows/2);
 }
 
-
-function Level::draw()
-{
-	foreach (var t in wallObjArray)
+//
+function Level::Draw() {
+	foreach (var t in wallObjArray) {
 		t.Draw();
+	}
 	floorMesh.draw();
 	skyMesh.Draw();
 }
 
+//
 function Level::GetWallObjAtPosition(position) {
 	var i = int(position.z);
 	var j = int(position.x);

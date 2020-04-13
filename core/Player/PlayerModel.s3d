@@ -7,7 +7,7 @@
 #include "../Bullet/BulletModel.s3d"
 
 /**
- * default constants, used in the player constructor 
+ * default constants, used in the player constructor
  * if the corresponding variable is void
  */
 #define PLAYER_DEFAULT_HP 100			/**< health points*/
@@ -260,14 +260,13 @@ function PlayerModel::Update(event) {
 		if (isEventSet(event, PLAYER_RUN)) {
 			runMultiplicator = 1.5;
 		}
-		
+		// horizontal velocity
 		hVel = 0;
 		if (isEventSet(event, PLAYER_UP)) {
 			hVel = PLAYER_VELOCITY * runMultiplicator;
 		} else if (isEventSet(event, PLAYER_DOWN)) {
 			hVel = -PLAYER_VELOCITY;
 		}
-		
 		// angle and direction
 		if (isEventSet(event, PLAYER_RIGHT | PLAYER_LEFT)){
 			if (isEventSet(event, PLAYER_RIGHT)) {
@@ -278,7 +277,7 @@ function PlayerModel::Update(event) {
 			}
 			direction = [sin(angle), 0, cos(angle)];
 		}
-	    
+	    // jump
 	    if (isEventSet(event, PLAYER_JUMP)) {
 	    	var vx = PLAYER_VELOCITY;
 	    	var h = runMultiplicator * PLAYER_JUMP_HEIGHT;
@@ -347,9 +346,11 @@ function PlayerModel::IsCollidingWithBullet(bullet) {
 	var x0 = bullet.position,
 		x1 = position,
 		x2 = position + [0,1,0];
-	
+	// projection of a point on a rect
   	var t = ((x1 - x0) * (x2 - x1))/(Modulus(x2 - x1) ^ 2);
-  	
+  	// if t is between 0 and 1 it means the projection is
+  	// in the segment, otherwise take the nearest edge of 
+  	// the segment
   	t = min(max(0, t), 1);
   	
   	var nearestPoint = x1 + t*(x2 - x1);
@@ -390,11 +391,11 @@ function PlayerModel::MarshallDelta(Data) {
 	var myData = this.Marshall();
 	
 	if (Data == void || len(Data) == 0) {
-		return myData;
+		return {myData, void};
 	}
 	
 	if(len(data) < len(myData)) {
-		OutputLN("ERROR len(model) < len(myModel)");
+		return {void, "incomplete input data for compare"};
 	}
 	
 	var deltaData = Array(0);
@@ -423,10 +424,10 @@ function PlayerModel::MarshallDelta(Data) {
 	}
 	
 	if(len(deltaData) == 0) {
-		return void;
+		return {void, void};
 	}
 
-	return deltaData;
+	return {deltaData, void};
 }
 
 //
@@ -472,7 +473,7 @@ function PlayerModel::Unmarshall(data) {
 			UnmarshallShootedBullets(value);
 			break;
 		default:
-			OutputLn("unexpected field: { \"" + key + "\": \"" + field +"\" }");
+			OutputLn("[WARN] PlayerModel::Unmarshall: unexpected field: { \"" + key + "\": \"" + field +"\" }");
 			break;
 		}
 	}

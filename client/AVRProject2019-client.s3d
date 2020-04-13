@@ -9,7 +9,7 @@
 /**
  * MULTIPLAYER CONFIGURATION
  */
-#define CONF_MULTIPLAYER false			/**< enable or disable multiplayer*/
+#define CONF_MULTIPLAYER true			/**< enable or disable multiplayer*/
 #define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
 #define CONF_SERVER_PORT 5555			/**< port of the server. */
 #define CONF_MAX_NPLAYERS 2				/**< max number of players. */
@@ -120,48 +120,48 @@ function OnInit(params) {
 	Light0.Enable();	
 
 	// TODO: put your initialization code here
-	mylevel = level();
-	mylevel.init("level.txt");
+	mylevel = Level();
+	mylevel.Init("level.txt");
 	
 	var initialModel;
 	if (CONF_MULTIPLAYER) {
-		OutputLN("multiplayer");
-		OutputLN("trying to connect to server");
+		OutputLN("[INFO] multi player mode");
+		OutputLN("[INFO] trying to connect to server");
 		myCh = NetConnectTCP(CONF_SERVER_ADDRESS, CONF_SERVER_PORT);
 		if(myCh == 0) {
-			OutputLN("error connecting to server");
+			OutputLN("[ERROR] connecting to server");
 			Quit(myCh);	
 		}
-		OutputLN("server connection estabilished");
+		OutputLN("[INFO] server connection estabilished");
 		initialModel = receiveDataFromServer();
-		OutputLN("receive initModel from server");
+		OutputLN("[INFO] receive initModel from server");
 	} else {
-		OutputLN("single player mode");
+		OutputLN("[INFO] single player mode");
 		var p = PlayerModel(mylevel, 0, [2.0,0,2.0]);
 		initialModel = p.Marshall();
 	}
 
-	myID = initialModel[0][1];
-	
-	var myPlayer = PlayerGfx(mylevel, myID, [0,0,0]);
+	var myPlayer = PlayerGfx(mylevel, 0, [0,0,0]);
 	myPlayer.Init([1,0,0]);
 	myPlayer.Unmarshall(initialModel);
+	
+	myID = myPlayer.ID;
 	players[myID] = myPlayer;
 }
 
 //
 function OnFrame() {
-		
+
 	if(CONF_MULTIPLAYER) {
 		var isDataReady = NetDataReady(myCh);
 		if(isDataReady) {
 			var data = receiveDataFromServer();
 			if (data == void) {
-				OutputLN("server connection lost");
+				OutputLN("[ERROR] server connection lost");
 				Quit(data);
 			}
 			setAllPlayersModels(data);
-		}	
+		}
 	}
 	
 	cameraController();
@@ -178,14 +178,15 @@ function OnFrame() {
 	DrawGrid([0.5, 0.5, 0.5], 100);
 	mylevel.draw();
 	
+	// this draw player, weapons and bullets
 	for(var i=0; i<len(players); i++){
 		if (players[i] != void) {
-			players[i].Draw();	
+			players[i].Draw();
 		}
 	}
 	
 	SceneEnd();
-	
+
 	myPlayer.RemoveVoidBullets();
 }
 
@@ -214,7 +215,7 @@ function setAllPlayersModels(models) {
 //
 function receiveDataFromServer() {
 	var data = NetVarReceiveFromTCP(myCh);
-	OutputLN("receiveDataFromServer: ", data);
+	OutputLN("[INFO] receiveDataFromServer: ", data);
 	return data;
 	
 }
@@ -254,7 +255,7 @@ function OnExit() {
  	switch(evt) {
  	case 1: // restart game
  		if (!myplayer.IsDead()) {
- 			OutputLN("Player is not dead, you can't restart the game");
+ 			OutputLN("[WARN] Player is not dead, you can't restart the game");
  			break;
  		}
  		

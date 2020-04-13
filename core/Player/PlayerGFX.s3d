@@ -7,7 +7,7 @@
 #include "../Bullet/BulletGFX.s3d"
 
 /**
- * internals 
+ * internals
  */
 #define SWAT_START_WALK 16
 #define SWAT_END_WALK   48
@@ -117,14 +117,15 @@ function PlayerGFX::Draw() {
 		this.obj.Hide();
 		foreach (var bullet in shootedBullets) {
 			if (bullet != void) {
-				bullet.Draw();
+				var b = BulletGFX(bullet.Pid, bullet.position, bullet.direction, bullet.speed, bullet.damage, bullet.radiusOfInfluence);
+				b.Init();
+				b.Draw();
 			}
 		}
 		return;
 	}
-	
+
 	if (weaponToHide >= 0) {
-		OutputLN("hiding weapon: ", weaponToHide);
 		weapons[weaponToHide].obj.Hide();
 		weaponToHide = -1;
 	}
@@ -140,7 +141,9 @@ function PlayerGFX::Draw() {
 	
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
-			bullet.Draw();
+			var b = BulletGFX(bullet.Pid, bullet.position, bullet.direction, bullet.speed, bullet.damage, bullet.radiusOfInfluence);
+			b.Init();
+			b.Draw();
 		}
 	}
 	

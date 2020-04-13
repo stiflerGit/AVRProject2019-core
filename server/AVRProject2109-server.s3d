@@ -16,7 +16,7 @@
 
 var mylevel;	/**< Level Obj, main level */	
 
-var listenCh;	/**< int, listen channel where clients first connects */
+var listenCh;	/**< int, listen channel where clients first connect */
 
 var clients = Array(CONF_MAX_NPLAYERS);	/**< Array of Array = {ch, player} all clients array
  										 * ch	int, channel for communication purpose
@@ -43,6 +43,11 @@ function delFirstFreeID() {
  * @param[in]	ID	int, Id to add
  */
 function addFreeID(ID) {
+	foreach (var idx in freeIDs) {
+		if(idx == ID) {
+			return;
+		}
+	}
 	aadd(freeIDs, ID);
 }
 
@@ -99,9 +104,9 @@ function clientClose(client);
  * 
  * Remove the bullets that collides(bullet = void)
  * 
- * @param[in]	pp	player whom to check bullets
+ * @param[in]	player	player whom to check bullets
  */
-function processBulletsCollision(pp);
+function processBulletsCollision(player);
 
 /**
  * return a x,y position of the level where there isn't a wall
@@ -118,27 +123,29 @@ function OnDownload() {
 //
 function OnInit(params) {
 	OutputLN("");
-	OutputLN("init server");
+	OutputLN("[INFO] initializing server");
 
-	OutputLN("init server level");
+	OutputLN("[INFO] initializing level");
 	mylevel = level();
 	mylevel.init("level.txt");
-	OutputLN("server level initialized");
+	OutputLN("[INFO] server level initialized");
 	
-	OutputLN("creating listen channel");
+	OutputLN("[INFO] creating listen channel");
 	listenCh = NetCreateChannelTCP(CONF_SERVER_PORT, CONF_SERVER_ADDRESS);
 	if (listenCh == -1) {
-		OutputLN("error NetCreateChannelTCP");
+		OutputLN("[ERROR] creating listen channel");
 		Quit(listenCh);
 	}
-	OutputLN("listen channel created");
+	OutputLN("[INFO] listen channel created");
 	
 	for(var i=0; i<CONF_MAX_NPLAYERS; i++) {
 		aadd(freeIDs, i);
 	}
 	
 	SetTimeStep(200);
-
+	
+	OutputLn("[INFO] server initialized");
+	OutputLn("[INFO] waiting for a client to connect");
 }
 
 //
@@ -149,11 +156,12 @@ function OnFrame() {
 	// check new player connection
 	isDataReady = NetDataReady(listenCh);
 	if(isDataReady) {
-		OutputLN("new client connected");
-		var ret = initNewClient();
-		var pid = ret[0], error = ret[1];
-		if (error != void) {
-			Quit(error);
+		OutputLN("[INFO] new client connected");
+		var playerIdAndErr = initNewClient();
+		var pid = playerIdAndErr[0], err = playerIdAndErr[1];
+		if (err != void) {
+			OutputLn("[ERROR] initNewClient: " + err);
+			Quit(err);
 		}
 		sendAllModelsToAllClients();
 	}
@@ -170,12 +178,12 @@ function OnFrame() {
 		if (isDataReady) {
 			data = receiveDataFromClient(ch);
 			if (data == void){
-				// client disconnected
+				OutputLn(Sprintf("[INFO] client %d disconnected", player.ID));
 				clientClose(i);
 				continue;
 			}
 		}
-		
+		// check if data is string. These are special commands.
 		if (valtype(data) == "S") {
 			if (data == "restart" && player.IsDead()) {
 				player.Restart(getRandomFreePosition());
@@ -191,7 +199,7 @@ function OnFrame() {
 
 //
 function OnTimer() {
-	static var oldplayerModels = Array(CONF_MAX_NPLAYERS);
+	static var oldplayerData = Array(CONF_MAX_NPLAYERS);
 	static var c = 0;
 //	OutputLN(c);
 	c++;
@@ -199,39 +207,43 @@ function OnTimer() {
 		return;
 	}
 	
-	var playerDeltaModels = Array(CONF_MAX_NPLAYERS);
+	var playerDeltaData= Array(CONF_MAX_NPLAYERS);
 	var update = false;
 	for (var i = 0; i < len(clients); i++) {
 		if (clients[i] == void) {
-			if (oldplayerModels[i] != void) {
-				if (len(oldplayerModels[i]) != 0) {
-					oldPlayerModels[i] = {};
+			if (oldplayerData[i] != void) {
+				if (len(oldplayerData[i]) != 0) {
+					oldPlayerData[i] = {};
 					update = true;	
 				} else {
-					oldplayerModels[i] = void;
+					oldplayerData[i] = void;
 				}	
 			}
 			continue;
 		}
 		
 		var ch = clients[i][0], player = clients[i][1];
+		var deltaAndErr = player.MarshallDelta(oldPlayerData[i]);
+		var deltaData = deltaAndErr[0], err = deltaAndErr[1]; 
 		
-		if (oldplayerModels[i] == void) {
-			playerDeltaModels[i] = player.Marshall();
-		} else {
-			playerDeltaModels[i] = player.MarshallDelta(oldPlayerModels[i]); 
+		if(err != void) {
+			OutputLn("[ERROR] player.MarshallDelta: " + err);
+			continue;
+//			Quit(err); // better don't quit
 		}
 		
-		if (playerDeltaModels[i] != void) {
+		playerDeltaData[i] =  deltaData;
+				
+		if (playerDeltaData[i] != void) {
 			update = true;
 		}
 		
-		oldPlayerModels[i] = player.Marshall();
+		oldPlayerData[i] = player.Marshall();
 		player.RemoveVoidBullets();
 	}
 	
 	if(update) {
-		sendDataToAllClients(playerDeltaModels);	
+		sendDataToAllClients(playerDeltaData);	
 	}
 }
 
@@ -258,10 +270,10 @@ function processBulletsCollision(pp){
 				
 			if (player.isCollidingWithBullet(bullet)) {
 				player.Hp -= bullet.damage;
-				outputLn("player ", pp.ID, " hit player ", player.ID);
+				outputLn("[INFO] player ", pp.ID, " hit player ", player.ID);
 				if (player.Hp <= 0){
 					// player dead; do something ??
-					OutputLn("player ", pp.ID, " kill player ", player.ID);
+					OutputLn("[INFO] player ", pp.ID, " kill player ", player.ID);
 				}
 				pp.shootedBullets[i] = void;
 				break;
@@ -307,7 +319,7 @@ function acceptNewClient(){
 //
 function receiveDataFromClient(listenCh) {
 	var data = NetVarReceiveFromTCP(listenCh);
-	OutputLN("receiveDataFromClient: ", data);
+	OutputLN("[INFO] receiveDataFromClient: ", data);
 	return data;
 }
 
@@ -343,17 +355,16 @@ function sendAllModelsToAllClients() {
 
 //
 function initNewClient() {
-	var ret = acceptNewClient();
-	var clientCh = ret[0], err = ret[1];
+	var clientChAndErr = acceptNewClient();
+	var clientCh = clientChAndErr[0], err = clientChAndErr[1];
 	if (err != void) {
-		OutputLN("acceptNewClient: ", err);
 		return {void, Sprintf("acceptNewClient: %s\n", err)};
 	}
 	// initialize a player model
 	var pid = delFirstFreeID();
 	var p = PlayerModel(mylevel, pid, getRandomFreePosition());
 	clients[pid] = {clientCh, p};
-	// responce to client
+	// response to client
 	var model = p.Marshall();
 	sendDataToClient(clientCh, model);
 	return {pid, void};

@@ -125,12 +125,10 @@ function WeaponModel::Reload(nBul) {
 function WeaponModel::Update(){
 	
 	if (shootTimeout > 0) {
-		OutputLn(shootTimeout);
 		shootTimeout -= 0.01;
 	}
 	
 	if (reloadTimeout > 0) {
-		OutputLn(reloadTimeout);
 		reloadTimeout -= 0.01;
 	}
 }
