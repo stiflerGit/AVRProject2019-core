@@ -9,7 +9,7 @@
 /**
  * MULTIPLAYER CONFIGURATION
  */
-#define CONF_MULTIPLAYER true			/**< enable or disable multiplayer*/
+#define CONF_MULTIPLAYER false			/**< enable or disable multiplayer*/
 #define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
 #define CONF_SERVER_PORT 5555			/**< port of the server. */
 #define CONF_MAX_NPLAYERS 2				/**< max number of players. */
@@ -311,18 +311,17 @@ function cameraController() {
 //
 function CameraFirstPerson() {
 	var myplayer = players[myID];
-	var headPos;
-	headPos = myplayer.getHeadPosition();
-	if (CamPos != headPos) {
-		Camera.SetPosition(CamPos);	
-		CamPos = headPos;
-	}
 	
+	var headPos = myplayer.getHeadPosition();
 	var headDir = myplayer.direction; 
 
 	if (CamDir != headDir){
 		Camera.SetDirection(myplayer.direction);
 		CamDir = myplayer.direction;
+	}
+	if (CamPos != headPos) {
+		Camera.SetPosition(CamPos+0.05*CamDir);	
+		CamPos = headPos;
 	}
 }
 

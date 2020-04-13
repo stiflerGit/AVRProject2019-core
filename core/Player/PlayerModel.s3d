@@ -237,7 +237,7 @@ function PlayerModel::RemoveVoidBullets() {
 
 //
 function PlayerModel::GetHeadPosition() {
-	var headPosition = this.position + (0.3) * this.direction;
+	var headPosition = this.position;
 	headPosition.y = headPosition.y + 1.5;
 	return (headPosition);
 }
