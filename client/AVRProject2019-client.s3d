@@ -197,7 +197,10 @@ function setAllPlayersModels(models) {
 		if (model != void) {
 			
 			if (len(model) == 0) {
-				players[i] = void;
+				if(players[i] != void) {
+					players[i].obj.Hide();
+					players[i] = void;	
+				}
 				continue;
 			}
 			

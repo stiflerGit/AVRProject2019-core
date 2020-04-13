@@ -180,6 +180,9 @@ function OnFrame() {
 			if (data == void){
 				OutputLn(Sprintf("[INFO] client %d disconnected", player.ID));
 				clientClose(i);
+				var dd = Array(CONF_MAX_NPLAYERS);
+				dd[i] = {};
+				sendDataToAllClients(dd);
 				continue;
 			}
 		}
@@ -373,9 +376,11 @@ function initNewClient() {
 //
 function clientClose(id) {
 	var client = clients[id];
+	var ch = client[0], p = client[1];
+	
 	clients[id] = void;
 	addFreeID(id);
-	var ch = client[0], p = client[1];
+	
 	NetClose(ch);
 //	TODO: p.free???
 }
