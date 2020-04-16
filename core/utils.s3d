@@ -44,4 +44,40 @@ function isEventSet(event, maskEvent) {
 	return true;
 }
 
+/**
+ * return red component of an integer
+ * 
+ * @param[in]	integer, integer value 
+ * @return		int, red component
+ */
+function RedComponentOfInt(integer) {
+	var redBitmask = Int(255 * (2 ^ 16));
+	
+	return Int((integer & redBitmask )/ 2^16);
+}
+
+/**
+ * return green component of an integer
+ * 
+ * @param[in]	integer, integer value 
+ * @return		int, green component
+ */
+function GreenComponentOfInt(integer) {
+	var greenBitmask = Int(255 * (2 ^ 8));
+	
+	return Int((integer & greenBitmask) / 2^8);
+}
+
+/**
+ * return blue component of an integer
+ * 
+ * @param[in]	integer, integer value 
+ * @return		int, blue component
+ */
+function BlueComponentOfInt(integer) {
+	var bluemask = Int(255);
+	
+	return Int((integer & bluemask));
+}
+
 #endif

@@ -9,7 +9,7 @@
 /**
  * MULTIPLAYER CONFIGURATION
  */
-#define CONF_MULTIPLAYER false			/**< enable or disable multiplayer*/
+#define CONF_MULTIPLAYER true			/**< enable or disable multiplayer*/
 #define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
 #define CONF_SERVER_PORT 5555			/**< port of the server. */
 #define CONF_MAX_NPLAYERS 2				/**< max number of players. */
@@ -142,7 +142,7 @@ function OnInit(params) {
 	}
 
 	var myPlayer = PlayerGfx(mylevel, 0, [0,0,0]);
-	myPlayer.Init([1,0,0]);
+	myPlayer.Init([1, 1, 1]);
 	myPlayer.Unmarshall(initialModel);
 	
 	myID = myPlayer.ID;
@@ -205,10 +205,8 @@ function setAllPlayersModels(models) {
 			}
 			
 			if (players[i] == void) {
-				var col = [0,0,0];
-				col[i]=1;
 				players[i] = PlayerGFX(i, myLevel,[0.0, 0.0, 0.0]);
-				players[i].Init(col);
+				players[i].Init([1, 1, 1]);
 			}
 			players[i].Unmarshall(model);
 		}
@@ -220,7 +218,6 @@ function receiveDataFromServer() {
 	var data = NetVarReceiveFromTCP(myCh);
 	OutputLN("[INFO] receiveDataFromServer: ", data);
 	return data;
-	
 }
 
 //
