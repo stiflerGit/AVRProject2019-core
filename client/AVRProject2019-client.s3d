@@ -138,12 +138,12 @@ function OnInit(params) {
 	} else {
 		OutputLN("[INFO] single player mode");
 		var p = PlayerModel(mylevel, 0, [2.0,0,2.0]);
-		initialModel = p.Marshall();
+		initialModel = p.Marshal();
 	}
 
 	var myPlayer = PlayerGfx(mylevel, 0, [0,0,0]);
 	myPlayer.Init([1, 1, 1]);
-	myPlayer.Unmarshall(initialModel);
+	myPlayer.Unmarshal(initialModel);
 	
 	myID = myPlayer.ID;
 	players[myID] = myPlayer;
@@ -208,7 +208,7 @@ function setAllPlayersModels(models) {
 				players[i] = PlayerGFX(i, myLevel,[0.0, 0.0, 0.0]);
 				players[i].Init([1, 1, 1]);
 			}
-			players[i].Unmarshall(model);
+			players[i].Unmarshal(model);
 		}
 	}
 }

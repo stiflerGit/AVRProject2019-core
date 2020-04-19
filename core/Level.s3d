@@ -3,7 +3,7 @@
 
 #include "utils.s3d"
 
-var level_matrix;
+var levelMatrix;
 
 class Level {
 	var wallMeshes;
@@ -15,10 +15,14 @@ class Level {
 	var floorTexture;
 	var freeIndexes;
 	var skyMesh;
+	var levelHeight;
+	var numColumns;
+	var numRows;
 	
 	Init(level_textfile);
 	Draw();
 	GetWallObjAtPosition(position);
+	IsPointInside(point);
 };
 
 
@@ -31,16 +35,16 @@ function level::init(levelTextFile) {
 	freeIndexes = Array(0);
 	
 	wallObjArray = array(0);
-	wallMeshes = Array(3);
+	wallMeshes = Array(10);
 	var f = LoadFile(levelTextFile);
 	trace(f);
-	var numRows = len(f);
-	var numColumns = len(f[0]);
-	level_matrix = array(numRows);
+	numRows = len(f);
+	numColumns = len(f[0]);
+	levelMatrix = array(numRows);
 	trace(numRows, numColumns);
-	for(var i=0; i< numRows; i++)
-	{
-		level_matrix[i] = array(numColumns);
+	levelHeight = 0;
+	for(var i=0; i< numRows; i++) {
+		levelMatrix[i] = array(numColumns);
 		for(var j=0; j< numColumns; j++) {
 			if (f[i][j] != " ") {
 				var height = val(f[i][j]);
@@ -50,17 +54,22 @@ function level::init(levelTextFile) {
 					mesh.SetMaterial(wallMaterial);
 					wallMeshes[height-1] = mesh;
 				}
+				if (height > levelHeight) {
+					levelHeight = height;
+				}
 				var t = CVmObj(mesh);
 				t.SetPosition(j, 0, i);
 				t.setScale(1, height, 1);
 				aadd(wallObjArray, t);
-				level_matrix[i][j] = len(wallObjArray) - 1;
+				levelMatrix[i][j] = len(wallObjArray) - 1;
 			} else{
-				level_matrix[i][j] = -1;
+				levelMatrix[i][j] = -1;
 				aadd(freeIndexes, {i,j});
 			}
 		}
-	}	
+	}
+	
+	levelHeight = levelHeight + 2; 
 	
 	floorMaterial = CVmMaterial();
 	floorTexture  = CVMtexture("marmo.png");
@@ -92,11 +101,27 @@ function Level::Draw() {
 function Level::GetWallObjAtPosition(position) {
 	var i = int(position.z);
 	var j = int(position.x);
-	var wallIdx = level_matrix[i][j];
+	var wallIdx = levelMatrix[i][j];
 	if (wallIdx == -1) {
 		return;
 	}
 	return wallObjArray[wallIdx];
+}
+
+//
+function Level::IsPointInside(point) {
+	if(point == void) {
+		return;
+	}
+	
+	if(point.x < 0 || point.y < 0 || point.z < 0) {
+		return false;
+	}
+	
+	if (point.x < numColumns && point.y < levelHeight && point.z < numRows) {
+		return true;
+	}
+	return false;
 }
 
 #endif

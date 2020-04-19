@@ -120,14 +120,14 @@ class PlayerModel {
 	IsCollidingWithBullet(bullet);
 	
 	/**
-	 * Marshall and Unmarshall functions to comunicate with server 
+	 * Marshal and Unmarshal functions to comunicate with server 
 	 */
-	Marshall();
-	MarshallDelta(model);
-	Unmarshall(model);
-	UnmarshallShootedBullets(model);
-	MarshallShootedBullets();
-	MarshallShootedBulletsDelta(model);
+	Marshal();
+	MarshalDelta(model);
+	Unmarshal(model);
+	UnmarshalShootedBullets(model);
+	MarshalShootedBullets();
+	MarshalShootedBulletsDelta(model);
 	
 	/**
 	 * private use only functions
@@ -364,9 +364,9 @@ function PlayerModel::IsCollidingWithBullet(bullet) {
 }
  
 //
-function PlayerModel::Marshall() {
+function PlayerModel::Marshal() {
 	
-	var bulletsData = MarshallShootedBullets();
+	var bulletsData = MarshalShootedBullets();
 	
 	var data = {
 		{"ID", ID},
@@ -387,8 +387,8 @@ function PlayerModel::Marshall() {
 }
 
 // 
-function PlayerModel::MarshallDelta(Data) {
-	var myData = this.Marshall();
+function PlayerModel::MarshalDelta(Data) {
+	var myData = this.Marshal();
 	
 	if (Data == void || len(Data) == 0) {
 		return {myData, void};
@@ -404,7 +404,7 @@ function PlayerModel::MarshallDelta(Data) {
 		var DataKey = Data[i][0], DataVal = Data[i][1];
 		
 		if (myDataKey=="shootedBullets") {
-//			var shootedBulletDeltaDatas = MarshallShootedBulletsDelta(DataVal);
+//			var shootedBulletDeltaDatas = MarshalShootedBulletsDelta(DataVal);
 //			if (shootedBulletDeltaDatas != void) {
 			if (myDataVal != void) {
 				aadd(deltaData, {"shootedBullets", myDataVal});
@@ -431,7 +431,7 @@ function PlayerModel::MarshallDelta(Data) {
 }
 
 //
-function PlayerModel::Unmarshall(data) {
+function PlayerModel::Unmarshal(data) {
 	foreach(var field in data) {
 		var key = field[0], value = field[1];
 		
@@ -470,17 +470,17 @@ function PlayerModel::Unmarshall(data) {
 			this.actualWeaponIdx = value;
 			break;
 		case "shootedBullets":
-			UnmarshallShootedBullets(value);
+			UnmarshalShootedBullets(value);
 			break;
 		default:
-			OutputLn("[WARN] PlayerModel::Unmarshall: unexpected field: { \"" + key + "\": \"" + field +"\" }");
+			OutputLn("[WARN] PlayerModel::Unmarshal: unexpected field: { \"" + key + "\": \"" + field +"\" }");
 			break;
 		}
 	}
 }
 
 //
-function PlayerModel::UnmarshallShootedBullets(Data) {
+function PlayerModel::UnmarshalShootedBullets(Data) {
 	if(Data == void || len(Data) == 0) {
 		return;
 	}
@@ -502,17 +502,17 @@ function PlayerModel::UnmarshallShootedBullets(Data) {
 		if (shootedBullets[i] == void) {
 			shootedBullets[i] = BulletModel(this.ID, [0,0,0], [0,0,0], 0, 0);
 		}
-		shootedBullets[i].Unmarshall(bulletData);
+		shootedBullets[i].Unmarshal(bulletData);
 	}
 	
 }
 
 //
-function PlayerModel::MarshallShootedBullets() {
+function PlayerModel::MarshalShootedBullets() {
 	var bulletModels = Array(0);
 	foreach (var bullet in shootedBullets) {
 		if (bullet != void) {
-			aadd(bulletModels, bullet.Marshall());	
+			aadd(bulletModels, bullet.Marshal());	
 		} else {
 			aadd(bulletModels, void);
 		}
@@ -526,10 +526,10 @@ function PlayerModel::MarshallShootedBullets() {
 }
 
 //
-function PlayerModel::MarshallShootedBulletsDelta(model) { 
+function PlayerModel::MarshalShootedBulletsDelta(model) { 
 		
 	if(model == void || len(model) == 0) {
-		return MarshallShootedBullets();
+		return MarshalShootedBullets();
 	}
 	
 	var deltaModels = Array(0);
@@ -543,11 +543,11 @@ function PlayerModel::MarshallShootedBulletsDelta(model) {
 		}
 		
 		if (i>len(model) || model[i] == void) {
-			aadd(deltaModels, shootedBullet.Marshall());
+			aadd(deltaModels, shootedBullet.Marshal());
 			continue;
 		}
 		
-		var deltaModel = shootedBullet.MarshallDelta(model[i]);
+		var deltaModel = shootedBullet.MarshalDelta(model[i]);
 		if (deltaModel == void) {
 			deltaModel = {};
 		}

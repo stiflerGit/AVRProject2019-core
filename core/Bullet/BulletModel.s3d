@@ -58,11 +58,11 @@ class BulletModel {
 	IsCollidingWithSphere(center, radius);
 	
 	/**
-	 * Marshall and Unmarshall functions to comunicate with server 
+	 * Marshal and Unmarshal functions to comunicate with server 
 	 */
-	Marshall();
-	MarshallDelta(model);
-	Unmarshall(model);
+	Marshal();
+	MarshalDelta(model);
+	Unmarshal(model);
 };
 
 //
@@ -112,7 +112,7 @@ function BulletModel::IsCollidingWithSphere(center, radius) {
 }
 
 //
-function BulletModel::Marshall() {
+function BulletModel::Marshal() {
 	return {
 		{ "Pid", Pid},
 		{ "position", position},
@@ -124,8 +124,8 @@ function BulletModel::Marshall() {
 }
 
 //
-function BulletModel::MarshallDelta(model) {
-	var myModel = this.Marshall();
+function BulletModel::MarshalDelta(model) {
+	var myModel = this.Marshal();
 	
 	if (len(model) == 0) {
 		return myModel;
@@ -161,7 +161,7 @@ function BulletModel::MarshallDelta(model) {
 }
 
 //
-function BulletModel::Unmarshall(model){
+function BulletModel::Unmarshal(model){
 	
 	if (len(model) == 0) {
 		return;

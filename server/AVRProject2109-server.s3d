@@ -13,15 +13,15 @@
 /**
  * Gloval variables
  */
+ 
+class Client {
+	var ch; 		/**< int, channel for communication purpose. */
+	var player; 	/**< PlayerModel Obj, player model of the client */
+};
 
 var mylevel;	/**< Level Obj, main level */	
-
 var listenCh;	/**< int, listen channel where clients first connect */
-
-var clients = Array(CONF_MAX_NPLAYERS);	/**< Array of Array = {ch, player} all clients array
- 										 * ch	int, channel for communication purpose
- 										 * player	PlayerModel Obj, player model of the client
- 										 */
+var clients = Array(CONF_MAX_NPLAYERS);	/**< Array of Client Objs, all clients array */
 var freeIDs = Array(0);	/**< int Array, free id to assign to new players */
 
 /**
@@ -84,7 +84,7 @@ function sendDataToClient(clientCh, data);
 function sendDataToAllClients(data);
 
 /**
- * send models of all players(player.Marshall) to all client
+ * send models of all players(player.Marshal) to all client
  * 
  */
 function sendAllModelsToAllClients();
@@ -171,7 +171,7 @@ function OnFrame() {
 			continue;
 		}
 		
-		var ch = clients[i][0], player = clients[i][1];
+		var ch = clients[i].ch, player = clients[i].player;
 	
 		var data = 0;	
 		isDataReady = NetDataReady(ch);			
@@ -225,12 +225,12 @@ function OnTimer() {
 			continue;
 		}
 		
-		var ch = clients[i][0], player = clients[i][1];
-		var deltaAndErr = player.MarshallDelta(oldPlayerData[i]);
+		var ch = clients[i].ch, player = clients[i].player;
+		var deltaAndErr = player.MarshalDelta(oldPlayerData[i]);
 		var deltaData = deltaAndErr[0], err = deltaAndErr[1]; 
 		
 		if(err != void) {
-			OutputLn("[ERROR] player.MarshallDelta: " + err);
+			OutputLn("[ERROR] player.MarshalDelta: " + err);
 			continue;
 //			Quit(err); // better don't quit
 		}
@@ -241,7 +241,7 @@ function OnTimer() {
 			update = true;
 		}
 		
-		oldPlayerData[i] = player.Marshall();
+		oldPlayerData[i] = player.Marshal();
 		player.RemoveVoidBullets();
 	}
 	
@@ -265,7 +265,7 @@ function processBulletsCollision(pp){
 			if (clients[j] == void) {
 				continue;
 			}
-			var ch = clients[j][0], player = clients[j][1];
+			var ch = clients[j].ch, player = clients[j].player;
 			
 			if (bullet.pid == player.ID) {
 				continue;
@@ -278,12 +278,12 @@ function processBulletsCollision(pp){
 					// player dead; do something ??
 					OutputLn("[INFO] player ", pp.ID, " kill player ", player.ID);
 				}
-				pp.shootedBullets[i] = void;
+				pp.shootedBullets[i] = {};
 				break;
 			}
 		}
 	}
-	// collision with walls
+	// collisions with walls
 	for (var i=0; i<len(bullets); i++) {
 		var bullet = bullets[i];
 
@@ -291,10 +291,19 @@ function processBulletsCollision(pp){
 			continue;
 		}
 		
+		if (!myLevel.IsPointInside(bullet.position)) {
+			pp.shootedBullets[i] = void;
+			continue;
+		}
+		
 		var wall = mylevel.GetWallObjAtPosition(bullet.position);
 		if (wall != void) {
-			pp.shootedBullets[i] = void;
+			var wallHeight = wall.GetScale().y;
+			if(bullet.position.y < wallHeight) {
+				pp.shootedBullets[i] = void;
+			}
 		}
+		
 	}
 }
 
@@ -335,8 +344,7 @@ function sendDataToClient(outputCh, data) {
 function sendDataToAllClients(data) {
 	foreach(var client in clients) {
 		if (client != void) {
-			var ch = client[0];
-			sendDataToClient(ch, data);	
+			sendDataToClient(client.ch, data);	
 		}
 	}
 }
@@ -350,8 +358,8 @@ function sendAllModelsToAllClients() {
 			continue;
 		}
 
-		var player = clients[i][1];
-		playerModels[i] = clients[i][1].Marshall();
+		var player = clients[i].player;
+		playerModels[i] = player.Marshal();
     }
     sendDataToAllClients(playerModels);
 }
@@ -366,23 +374,23 @@ function initNewClient() {
 	// initialize a player model
 	var pid = delFirstFreeID();
 	var p = PlayerModel(mylevel, pid, getRandomFreePosition());
-	clients[pid] = {clientCh, p};
+	clients[pid] = Client();
+	clients[pid].ch = clientCh;
+	clients[pid].player = p;
 	// response to client
-	var model = p.Marshall();
-	sendDataToClient(clientCh, model);
+	var data = p.Marshal();
+	sendDataToClient(clientCh, data);
 	return {pid, void};
 }
 
 //
 function clientClose(id) {
-	var client = clients[id];
-	var ch = client[0], p = client[1];
-	
+	var ch = clients[id].ch, p = clients[id].player;
+		
 	clients[id] = void;
 	addFreeID(id);
 	
 	NetClose(ch);
-//	TODO: p.free???
 }
 
 //
