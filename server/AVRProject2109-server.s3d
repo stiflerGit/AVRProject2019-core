@@ -242,7 +242,7 @@ function OnTimer() {
 		}
 		
 		oldPlayerData[i] = player.Marshal();
-		player.RemoveVoidBullets();
+		player.RemoveDeadBullets();
 	}
 	
 	if(update) {
@@ -256,10 +256,6 @@ function processBulletsCollision(pp){
 	 
 	for (var i=0; i<len(bullets); i++) {
 		var bullet = bullets[i];
-		
-		if (bullet == void) {
-			continue;
-		}
 		
 		for (var j=0; j<len(clients); j++) {
 			if (clients[j] == void) {
@@ -278,7 +274,7 @@ function processBulletsCollision(pp){
 					// player dead; do something ??
 					OutputLn("[INFO] player ", pp.ID, " kill player ", player.ID);
 				}
-				pp.shootedBullets[i] = {};
+				pp.shootedBullets[i].Kill();
 				break;
 			}
 		}
@@ -286,13 +282,9 @@ function processBulletsCollision(pp){
 	// collisions with walls
 	for (var i=0; i<len(bullets); i++) {
 		var bullet = bullets[i];
-
-		if(bullet == void) {
-			continue;
-		}
 		
 		if (!myLevel.IsPointInside(bullet.position)) {
-			pp.shootedBullets[i] = void;
+			pp.shootedBullets[i].Kill();
 			continue;
 		}
 		
@@ -300,10 +292,9 @@ function processBulletsCollision(pp){
 		if (wall != void) {
 			var wallHeight = wall.GetScale().y;
 			if(bullet.position.y < wallHeight) {
-				pp.shootedBullets[i] = void;
+				pp.shootedBullets[i].Kill();
 			}
 		}
-		
 	}
 }
 

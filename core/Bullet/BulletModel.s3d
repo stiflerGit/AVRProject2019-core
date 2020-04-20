@@ -20,6 +20,7 @@ class BulletModel {
 	var speed;		/**< float, moving speed  */
 	var damage;		/**< int, damage points, subtracted to a 
 					 *	player hp when it collides with him */
+	var dead;		/**< bool, true if the bullet is dead */
 					 
 	var radiusOfInfluence; /**< float, radius of the bullet */
 	
@@ -42,6 +43,9 @@ class BulletModel {
 	 * Update state (position, direction and speed are constants for now)
 	 */
 	Update();
+	
+	Kill();
+	IsDead();
 	
 	/**
 	 * Check if is colliding with a point
@@ -82,11 +86,22 @@ function BulletModel::BulletModel(pid, position, direction, speed, damage, radiu
 	this.damage = damage;
 	
 	this.radiusOfInfluence = radiusOfInfluence;
+	this.dead = false;
+}
+
+function BulletModel::Kill() {
+	dead = true;
+}
+
+function BulletModel::IsDead() {
+	return dead;
 }
 
 //
 function BulletModel::Update() {
-	position += direction*speed;
+	if(!dead) {
+		position += direction*speed;
+	}
 }
 
 //
@@ -119,51 +134,49 @@ function BulletModel::Marshal() {
 		{ "direction", direction},
 		{ "speed", speed},
 		{ "damage", damage},
-		{ "rof", radiusOfInfluence}
+		{ "rof", radiusOfInfluence},
+		{ "dead", dead}
 	};
 }
 
 //
-function BulletModel::MarshalDelta(model) {
-	var myModel = this.Marshal();
+function BulletModel::MarshalDelta(Data) {
+	var myData = this.Marshal();
 	
-	if (len(model) == 0) {
-		return myModel;
+	if (data == void || len(data) == 0) {
+		return {myData, void};
 	}
 	
-	var deltaModel = Array(0);
-	for (var i=0,j=0; i<len(myModel); i++){
-		var myModelKey = myModel[i][0], myModelVal = myModel[i][1];
+	if(len(data) < len(myData)) {
+		return {void, "incomplete input data for compare"};
+	}
+	
+	var deltaData = Array(0);
+	for (var i=0; i<len(myData); i++){
+		var myDataKey = myData[i][0], myDataVal = myData[i][1];		
+		var dataKey = Data[i][0], dataVal = Data[i][1];
 		
-		if (myModelkey=="shootedBullets" || j >= len(model)) {
-			aadd(deltaModel, myModel[i]);
-			continue;
+		if(DataKey != myDataKey) {
+			return {void, Sprintf("key number %d differ, myDataKey=%s, inputDataKey=%s",i, myDataKey, DataKey)};
 		}
 		
-		var modelKey = model[j][0], modelVal = model[j][1];
-		
-		if(myModelKey == modelKey) {
-			if (myModelVal != modelVal) {
-				aadd(deltaModel, myModel[i]);
-			}
-			j++;
-		} else {
-			aadd(deltaModel, myModel[i]);	
+		if (myDataVal != DataVal) {
+			aadd(deltaData, myData[i]);
 		}
 		
 	}
 	
-	if(len(deltaModel) == 0) {
-		return void;
+	if(len(deltaData) == 0) {
+		return {void, void};
 	}
-		
-	return deltaModel;
+
+	return {deltaData, void};
 }
 
 //
 function BulletModel::Unmarshal(model){
 	
-	if (len(model) == 0) {
+	if(model == void) {
 		return;
 	}
 	
@@ -188,7 +201,10 @@ function BulletModel::Unmarshal(model){
 			break;
 		case "rof":
 			this.radiusOfInfluence = value;
-			break; 
+			break;
+		case "dead":
+			this.dead = value;
+			break;
 		}
 	}
 }

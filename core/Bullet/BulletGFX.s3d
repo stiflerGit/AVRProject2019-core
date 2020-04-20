@@ -30,6 +30,10 @@ function BulletGFX::Init() {
 
 //
 function BulletGFX::Draw() {
+	if(dead) {
+		obj.Hide();
+		return;
+	}
 	obj.SetPosition(position);
 	obj.draw();
 }
