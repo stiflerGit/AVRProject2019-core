@@ -243,7 +243,7 @@ function PlayerModel::IsDead() {
  
 //
 function PlayerModel::RemoveDeadBullets() {
-	// remove deleted bullets
+	// remove dead bullets
 	for(var i=0; i<len(shootedBullets);){
 		if (shootedBullets[i].IsDead()) {
 			adel(shootedBullets, i);

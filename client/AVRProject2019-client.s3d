@@ -185,14 +185,14 @@ function OnFrame() {
 	
 	// this draw player, weapons and bullets
 	for(var i=0; i<len(players); i++){
-		if (players[i] != void) {
+		if (players[i] != void){
 			players[i].Draw();
 		}
 	}
 	
 	SceneEnd();
 
-	myPlayer.RemoveDeadBullets();
+//	myPlayer.RemoveDeadBullets();
 }
 
 //
@@ -272,7 +272,7 @@ function OnExit() {
 	
 //
 function playerController() {
-	static var PCkbs = KeyBindings({
+	var PCkbs = KeyBindings({
 		KeyBinding(VK_SHIFT, PLAYER_RUN, 0.0),
 		KeyBinding("d", PLAYER_RIGHT, 0.0),
 		KeyBinding("a", PLAYER_LEFT, 0.0),

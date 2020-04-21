@@ -377,10 +377,9 @@ function initNewClient() {
 //
 function clientClose(id) {
 	var ch = clients[id].ch, p = clients[id].player;
-		
 	clients[id] = void;
 	addFreeID(id);
-	
+	OutputLn(Sprintf("[INFO] closing channel %d", ch));
 	NetClose(ch);
 }
 
