@@ -9,10 +9,15 @@
 /**
  * MULTIPLAYER CONFIGURATION
  */
-#define CONF_MULTIPLAYER true			/**< enable or disable multiplayer*/
-#define CONF_SERVER_ADDRESS "localhost"	/**< address of the server */
-#define CONF_SERVER_PORT 5555			/**< port of the server. */
-#define CONF_MAX_NPLAYERS 2				/**< max number of players. */
+
+/**< enable or disable multiplayer */
+#define CONF_MULTIPLAYER true			
+/**< address of the server */
+#define CONF_SERVER_ADDRESS "localhost"
+/**< port of the server. */	
+#define CONF_SERVER_PORT 5555
+/**< max number of players. */
+#define CONF_MAX_NPLAYERS 2
 
 var myCh; /**< int, channel of communication with the server */
 
@@ -166,12 +171,12 @@ function OnFrame() {
 	
 	cameraController();
 	gameController();
-	var event = playerController();
-	if (CONF_MULTIPLAYER && event != 0) {
-		sendDataToServer(event);
+	var evt = playerController();
+	if (CONF_MULTIPLAYER && evt != 0) {
+		sendDataToServer(evt);
 	}
 	var myplayer = players[myID];
-	myPlayer.Update(event);
+	myPlayer.Update(evt);
 	
 	SceneBegin();
 	
@@ -180,14 +185,14 @@ function OnFrame() {
 	
 	// this draw player, weapons and bullets
 	for(var i=0; i<len(players); i++){
-		if (players[i] != void) {
+		if (players[i] != void){
 			players[i].Draw();
 		}
 	}
 	
 	SceneEnd();
 
-	myPlayer.RemoveVoidBullets();
+//	myPlayer.RemoveDeadBullets();
 }
 
 //
@@ -264,10 +269,10 @@ function OnExit() {
  		break;
  	}
  }
- 
+	
 //
 function playerController() {
-	static var kbs = KeyBindings({
+	var PCkbs = KeyBindings({
 		KeyBinding(VK_SHIFT, PLAYER_RUN, 0.0),
 		KeyBinding("d", PLAYER_RIGHT, 0.0),
 		KeyBinding("a", PLAYER_LEFT, 0.0),
@@ -279,20 +284,20 @@ function playerController() {
 		KeyBinding(KB_MOUSEW_KEY, PLAYER_NEXTWEAPON, 0.0)
 	});
 	
-	return kbs.OrEvents();
+	return PCkbs.OrEvents();
 }
 
 //
 function cameraController() {
-	static var cameraFunc = 0;
+	static var cameraFuncIdx = 0;
 	static var kbs = KeyBinding(VK_F5, 1, 2.0);
 
 	var evt = kbs.Event();
 	if (evt != 0) {
-		cameraFunc = (cameraFunc + 1) % 3;
+		cameraFuncIdx = (cameraFuncIdx + 1) % 3;
 	}
 	
-	switch(cameraFunc) {
+	switch(cameraFuncIdx) {
 	case 0:
 		CameraFirstPerson();
 		break;

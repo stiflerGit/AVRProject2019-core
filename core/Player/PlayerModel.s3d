@@ -10,31 +10,49 @@
  * default constants, used in the player constructor
  * if the corresponding variable is void
  */
-#define PLAYER_DEFAULT_HP 100			/**< health points*/
-#define PLAYER_DEFAULT_ANGLE 0			/**< starting angle */
-#define PLAYER_DEFAULT_NOWNBULLETS 9999	/**< no bullets owned */
-#define PLAYER_DEFAULT_STEP 0.1			/**< time step for the simulation */
+
+// health points
+#define PLAYER_DEFAULT_HP 100
+// starting angle
+#define PLAYER_DEFAULT_ANGLE 0
+// no bullets owned 
+#define PLAYER_DEFAULT_NOWNBULLETS 9999	
+// time step for the simulation
+#define PLAYER_DEFAULT_STEP 0.1			
 
 /**
  * internal defaults
  */
-#define PLAYER_DEFAULT_PPPOSITION_ACCURACY 3	/**< default post process postion accuracy */
-#define PLAYER_JUMP_HEIGHT 1.1					/**< height of the jump when not running */
-#define PLAYER_JUMP_LENGTH 3					/**< lenght of the jump when not running*/
-#define PLAYER_VELOCITY 1.0						/**< moving velocity when not running*/
+// default post process postion accuracy 
+#define PLAYER_DEFAULT_PPPOSITION_ACCURACY 3
+// height of the jump when not running 	
+#define PLAYER_JUMP_HEIGHT 1.1
+//  lenght of the jump when not running					
+#define PLAYER_JUMP_LENGTH 3
+// moving velocity when not running					
+#define PLAYER_VELOCITY 1.0						
 
 /**
  * input events for the PlayerModel.Update()
  */
-#define PLAYER_RUN 			1	/**< move faster if moving */
-#define PLAYER_LEFT 		2	/**< rotate left*/
-#define PLAYER_RIGHT 		4	/**< rotate right*/
-#define PLAYER_UP 			8	/**< go straight*/
-#define PLAYER_DOWN 		16	/**< go ahead */
-#define PLAYER_SHOOT 		32	/**< shoot with the current weapon */
-#define PLAYER_RELOAD 		64	/**< reload the current weapon */
-#define PLAYER_JUMP 		128	/**< jump */
-#define PLAYER_NEXTWEAPON	256	/**< switch to next weapon held */
+// move faster if moving 
+#define PLAYER_RUN 			1
+// rotate left	
+#define PLAYER_LEFT 		2
+// rotate right	
+#define PLAYER_RIGHT 		4
+// go straight	
+#define PLAYER_UP 			8
+// go ahead 	
+#define PLAYER_DOWN 		16
+// shoot with the current weapon 	
+#define PLAYER_SHOOT 		32
+// reload the current weapon 	
+#define PLAYER_RELOAD 		64
+// jump 	
+#define PLAYER_JUMP 		128
+// switch to next weapon held 	
+#define PLAYER_NEXTWEAPON	256	
 
 /**
  * PlayerModel class represent a player
@@ -108,7 +126,7 @@ class PlayerModel {
 	/**
 	 * Remove void bullets in the shootedBullets array
 	 */
-	RemoveVoidBullets();
+	RemoveDeadBullets();
 	
 	/**
 	 * Test if the player is colliding with a given bullet
@@ -224,10 +242,10 @@ function PlayerModel::IsDead() {
 } 
  
 //
-function PlayerModel::RemoveVoidBullets() {
-	// remove deleted bullets
+function PlayerModel::RemoveDeadBullets() {
+	// remove dead bullets
 	for(var i=0; i<len(shootedBullets);){
-		if (shootedBullets[i] == void) {
+		if (shootedBullets[i].IsDead()) {
 			adel(shootedBullets, i);
 			continue;
 		}
@@ -248,9 +266,7 @@ function PlayerModel::Update(event) {
 	if (IsDead()) {
 		// update only bullets	
 		foreach (var bullet in shootedBullets) {
-			if (bullet!= void) {
-				bullet.Update();
-			}
+			bullet.Update();
 		}
 		return;
 	}
@@ -330,9 +346,7 @@ function PlayerModel::Update(event) {
 	weapons[actualWeaponIdx].Update();
 	
 	foreach (var bullet in shootedBullets) {
-		if (bullet!= void) {
-			bullet.Update();
-		}
+		bullet.Update();
 	}
 	
 }
@@ -403,9 +417,14 @@ function PlayerModel::MarshalDelta(Data) {
 		var myDataKey = myData[i][0], myDataVal = myData[i][1];
 		var DataKey = Data[i][0], DataVal = Data[i][1];
 		
+		if(DataKey != myDataKey) {
+			return {void, Sprintf("key number %d differ, myDataKey=%s, inputDataKey=%s",i, myDataKey, DataKey)};
+		}
+		
 		if (myDataKey=="shootedBullets") {
 //			var shootedBulletDeltaDatas = MarshalShootedBulletsDelta(DataVal);
 //			if (shootedBulletDeltaDatas != void) {
+//				aadd(deltaData, {"shootedBullets", shootedBulletDeltaDatas });
 			if (myDataVal != void) {
 				aadd(deltaData, {"shootedBullets", myDataVal});
 			}
@@ -413,9 +432,7 @@ function PlayerModel::MarshalDelta(Data) {
 			continue;
 		}
 		
-		if(DataKey != myDataKey) {
-			Quit("DataKey != myDataKey");
-		}
+		
 		
 		if (myDataVal != DataVal) {
 			aadd(deltaData, myData[i]);
@@ -481,7 +498,15 @@ function PlayerModel::Unmarshal(data) {
 
 //
 function PlayerModel::UnmarshalShootedBullets(Data) {
-	if(Data == void || len(Data) == 0) {
+	if (Data == void) {
+		// do nothing
+		return;
+	}
+	
+	if (len(Data) == 0) {
+		if(len(this.shootedBullets) != 0) {
+			QUIT("UnmarshalShootedBullets: len(Data) = 0");
+		}
 		return;
 	}
 	
@@ -491,12 +516,11 @@ function PlayerModel::UnmarshalShootedBullets(Data) {
 		var bulletData = bulletDatas[i];
 		
 		if (bulletData == void) {
-			shootedBullets[i] = void;
 			continue;
 		}
 		
 		if (len(bulletData) == 0) {
-			continue;
+			QUIT("UnmarshalShootedBullets: len(bulletData) = 0");
 		}
 		
 		if (shootedBullets[i] == void) {
@@ -526,35 +550,34 @@ function PlayerModel::MarshalShootedBullets() {
 }
 
 //
-function PlayerModel::MarshalShootedBulletsDelta(model) { 
+function PlayerModel::MarshalShootedBulletsDelta(Data) { 
 		
-	if(model == void || len(model) == 0) {
+	if(Data == void || len(Data) == 0) {
 		return MarshalShootedBullets();
 	}
 	
-	var deltaModels = Array(0);
-	
+	var deltaDatas = Array(0);
 	for(var i=0; i<len(shootedBullets); i++) {
 		var shootedBullet = shootedBullets[i];
-		
-		if (shootedBullet == void) {
-			aadd(deltaModels, void);
+		if (len(Data) <= i) {
+			aadd(deltaDatas, shootedBullet.Marshal());
 			continue;
 		}
 		
-		if (i>len(model) || model[i] == void) {
-			aadd(deltaModels, shootedBullet.Marshal());
-			continue;
+		var inputBulletData = Data[i];		
+		if (i>len(inputBulletData) || inputBulletData == void) {
+			aadd(deltaDatas, shootedBullet.Marshal());
+			continue;			
 		}
 		
-		var deltaModel = shootedBullet.MarshalDelta(model[i]);
-		if (deltaModel == void) {
-			deltaModel = {};
-		}
-		
-		aadd(deltaModels, deltaModel);
+		var deltaDataAndErr = shootedBullet.MarshalDelta(inputBulletData);
+		var deltaData = deltaDataAndErr[0], err = deltaDataAndErr[1];
+		if (err != void) {
+			Quit("shootedBullet.MarshalDelta(inputBulletData);");
+		} 
+		aadd(deltaDatas, deltaData);
 	}
-
+	return deltaDatas;
 }
 
 

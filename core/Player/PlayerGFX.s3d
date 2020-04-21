@@ -116,11 +116,7 @@ function PlayerGFX::Draw() {
 	if (IsDead()) {
 		this.obj.Hide();
 		foreach (var bullet in shootedBullets) {
-			if (bullet != void) {
-				var b = BulletGFX(bullet.Pid, bullet.position, bullet.direction, bullet.speed, bullet.damage, bullet.radiusOfInfluence);
-				b.Init();
-				bullet.Draw();
-			}
+			bullet.Draw();
 		}
 		return;
 	}
@@ -140,11 +136,7 @@ function PlayerGFX::Draw() {
 	this.weapons[actualWeaponIdx].Draw();
 	
 	foreach (var bullet in shootedBullets) {
-		if (bullet != void) {
-			var b = BulletGFX(bullet.Pid, bullet.position, bullet.direction, bullet.speed, bullet.damage, bullet.radiusOfInfluence);
-			b.Init();
-			b.Draw();
-		}
+		bullet.Draw();
 	}
 	
 	if (playStep) {
@@ -181,6 +173,16 @@ function PlayerGFX::Unmarshal(data) {
 	var oldWeaponIdx = this.ActualWeaponIdx;
 	PlayerModel::this.Unmarshal(data);
 	
+	for(var i=0; i<len(shootedBullets); i++) {
+		var b = shootedBullets[i];
+		var bullet = BulletGFX(b.Pid, b.position, b.direction, b.speed, b.damage, b.radiusOfInfluence);
+		bullet.Init();
+		if (b.IsDead()) {
+			bullet.Kill();
+		}
+		shootedBullets[i] = bullet;
+	}
+	
 	if (hVel != 0){
 		var fStep = 1;			
 		if (hVel > PLAYER_VELOCITY) {
@@ -206,6 +208,10 @@ function PlayerGFX::Unmarshal(data) {
 
 //
 function PlayerGFX::updateGFX(event) {
+	if(IsDead()) {
+		return;
+	}
+	
 	if (!isInTheAir) {
 		var fStep = 1;
 		if (isEventSet(event, PLAYER_RUN)) {
