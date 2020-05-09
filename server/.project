@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>AVRProject2019-server</name>
+	<name>XVR-FirstPersonShooter-server</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -38,7 +38,7 @@
 				</dictionary>
 				<dictionary>
 					<key>MAIN</key>
-					<value>AVRProject2109-server.s3d</value>
+					<value>XVR-FirstPersonShooter-server.s3d</value>
 				</dictionary>
 				<dictionary>
 					<key>MAIN_HTML</key>
